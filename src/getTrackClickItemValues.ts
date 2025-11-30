@@ -28,16 +28,15 @@ export function getTrackClickItemValues(
   itemSize: number,
   itemCount: number
 ): { scrollOffset: number; thumbOffset: number } {
-  // Thumb size
+  // Early exit: no scrolling needed
+  if (contentSize <= viewportSize) {
+    return { scrollOffset: 0, thumbOffset: 0 };
+  }
+
   const thumbSize = getThumbSize(viewportSize, contentSize, trackSize);
-
-  // Click position relative to track
   const clickPos = clientCoord - viewportTrackStart;
-
-  // Desired thumb start (centered on click)
   const desiredThumbOffset = clickPos - thumbSize / 2;
 
-  // Clamp thumb offset within travel size
   const thumbTravelSize = getThumbTravelSize(
     viewportSize,
     contentSize,
@@ -48,27 +47,23 @@ export function getTrackClickItemValues(
     Math.min(desiredThumbOffset, thumbTravelSize)
   );
 
-  // Map to scrollOffset (continuous)
   const maxScrollOffset = getMaxScrollOffset(viewportSize, contentSize);
   let scrollOffset = (clampedThumbOffset / thumbTravelSize) * maxScrollOffset;
 
-  // --- Snap to nearest item boundary ---
+  // Snap to nearest item boundary
   const visibleItemsFloat = viewportSize / itemSize;
   const maxIndex = itemCount - Math.ceil(visibleItemsFloat);
-
   const snappedIndex = Math.max(
     0,
     Math.min(maxIndex, Math.round(scrollOffset / itemSize))
   );
   scrollOffset = snappedIndex * itemSize;
 
-  // Recompute thumbOffset from snapped scrollOffset
   const thumbOffset = getThumbOffset(
     viewportSize,
     contentSize,
     scrollOffset,
     trackSize
   );
-
   return { scrollOffset, thumbOffset };
 }

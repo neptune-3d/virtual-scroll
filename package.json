@@ -1,6 +1,6 @@
 {
   "name": "@neptune3d/virtual-scroll",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Pure functions for implementing a virtual scrollbar.",
   "keywords": [
     "virtual",
@@ -30,7 +30,7 @@
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch",
-    "test": "vitest",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
