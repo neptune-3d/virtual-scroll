@@ -1,6 +1,6 @@
 # @neptune3d/virtual-scroll
 
-Pure functions for implementing a virtual scrollbar.
+Math and helpers for implementing a virtual scrollbar.
 
 [![NPM Version](https://img.shields.io/npm/v/%40neptune3d%2Fvirtual-scroll)](https://www.npmjs.com/package/@neptune3d/virtual-scroll)
 

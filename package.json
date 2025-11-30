@@ -1,7 +1,7 @@
 {
   "name": "@neptune3d/virtual-scroll",
-  "version": "0.0.4",
-  "description": "Pure functions for implementing a virtual scrollbar.",
+  "version": "0.0.5",
+  "description": "Math and helpers for implementing a virtual scrollbar.",
   "keywords": [
     "virtual",
     "scroll"
