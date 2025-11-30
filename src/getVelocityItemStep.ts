@@ -15,7 +15,7 @@
  * @param {number} [maxItems=3] - The maximum number of items to scroll for larger gestures.
  * @returns {number} The number of items to scroll (positive or negative).
  */
-export function getItemScrollStep(
+export function getVelocityItemStep(
   normalizedDelta: number,
   minItems: number = 1,
   maxItems: number = 3

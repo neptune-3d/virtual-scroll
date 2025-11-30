@@ -10,11 +10,11 @@
  * and horizontal (deltaX) scrolling. The caller provides the delta,
  * viewport size, and item size along the relevant axis.
  *
- * @param {number} delta - Delta from WheelEvent (deltaY for vertical, deltaX for horizontal).
- * @param {number} deltaMode - WheelEvent.DOM_DELTA_PIXEL (0), LINE (1), or PAGE (2).
- * @param {number} viewportSize - Size of the scroll viewport in px (height or width).
- * @param {number} itemSize - Size of one item in px (row height or column width).
- * @returns {number} Number of items to scroll (positive = forward, negative = backward).
+ * @param delta - Delta from WheelEvent (deltaY for vertical, deltaX for horizontal).
+ * @param deltaMode - WheelEvent.DOM_DELTA_PIXEL (0), LINE (1), or PAGE (2).
+ * @param viewportSize - Size of the scroll viewport in px (height or width).
+ * @param itemSize - Size of one item in px (row height or column width).
+ * @returns Number of items to scroll (positive = forward, negative = backward).
  */
 export function getWheelItemDelta(
   delta: number,
@@ -24,8 +24,11 @@ export function getWheelItemDelta(
 ): number {
   if (deltaMode === 1) {
     return delta; // line units
-  } else if (deltaMode === 2) {
+  }
+  //
+  else if (deltaMode === 2) {
     return delta * (viewportSize / itemSize); // page units
   }
+
   return Math.sign(delta); // pixel mode → ±1 item
 }

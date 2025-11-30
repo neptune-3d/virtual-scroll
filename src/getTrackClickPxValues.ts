@@ -16,7 +16,7 @@ import { getThumbTravelSize } from "./getThumbTravelSize";
  * @param trackSize - Total track size (height or width).
  * @returns An object containing both scrollOffset and thumbOffset (in track‑relative pixels).
  */
-export function getValuesFromTrackClick(
+export function getTrackClickPxValues(
   clientCoord: number,
   viewportTrackStart: number,
   viewportSize: number,

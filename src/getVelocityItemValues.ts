@@ -10,7 +10,7 @@ import { getThumbOffsetFromScrollOffset } from "./getThumbOffsetFromScrollOffset
  * viewport size, content size, and item size/count.
  *
  * @param scrollOffset - Current scroll offset in px (scrollTop for Y, scrollLeft for X).
- * @param velocity - Current scroll velocity expressed in item units.
+ * @param itemVelocity - Current scroll velocity expressed in item units.
  * @param viewportSize - Visible size of the scroll container in px (height or width).
  * @param contentSize - Total size of the scrollable content in px.
  * @param itemSize - Size of one item in px (row height or column width).
@@ -22,9 +22,9 @@ import { getThumbOffsetFromScrollOffset } from "./getThumbOffsetFromScrollOffset
  *   - velocity: the decayed velocity for the next step
  *   - thumbOffset: the updated thumb position in track space
  */
-export function getValuesFromScrollVelocity(
+export function getVelocityItemValues(
   scrollOffset: number,
-  velocity: number,
+  itemVelocity: number,
   viewportSize: number,
   contentSize: number,
   itemSize: number,
@@ -37,8 +37,8 @@ export function getValuesFromScrollVelocity(
   const remainder = viewportSize % itemSize;
   const downOffset = remainder === 0 ? 0 : itemSize - remainder;
 
-  let stepItems = Math.round(velocity);
-  const nextVelocity = velocity * decay;
+  let stepItems = Math.round(itemVelocity);
+  const nextVelocity = itemVelocity * decay;
 
   let newScrollOffset = scrollOffset;
 
@@ -51,7 +51,9 @@ export function getValuesFromScrollVelocity(
     newIndex = Math.max(0, Math.min(maxIndex, newIndex));
 
     newScrollOffset = newIndex * itemSize + downOffset;
-  } else if (stepItems < 0) {
+  }
+  //
+  else if (stepItems < 0) {
     const baseIndex = Math.ceil(scrollOffset / itemSize);
     let newIndex = Math.ceil(baseIndex + stepItems);
 
