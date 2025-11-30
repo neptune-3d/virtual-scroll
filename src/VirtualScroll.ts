@@ -32,7 +32,7 @@
  */
 
 export class VirtualScroll {
-  constructor(itemSize: number) {
+  constructor(itemSize: number = 1) {
     this._itemSize = itemSize;
   }
 
@@ -339,6 +339,25 @@ export class VirtualScroll {
     }
   }
 
+  /**
+   * Applies a PageUp/PageDown jump to update scrollOffset.
+   * Delegates to getPageScrollValues for the math.
+   *
+   * @param direction - "up" for PageUp, "down" for PageDown.
+   */
+  handlePageScroll(direction: "up" | "down"): void {
+    if (this._contentSize <= this._viewportSize) {
+      this._scrollOffset = 0;
+      return;
+    }
+
+    const { scrollOffset } = this.getPageScrollValues(
+      this._scrollOffset,
+      direction
+    );
+    this._scrollOffset = scrollOffset;
+  }
+
   protected startWheelInertia(): void {
     const step = () => {
       if (Math.abs(this._wheelVelocity) < 0.5) {
@@ -516,5 +535,27 @@ export class VirtualScroll {
       velocity: nextVelocity,
       thumbOffset,
     };
+  }
+
+  protected getPageScrollValues(
+    scrollOffset: number,
+    direction: "up" | "down"
+  ): { scrollOffset: number; thumbOffset: number } {
+    const scrollExtent = Math.max(this._contentSize, this._viewportSize);
+    const maxScrollOffset = scrollExtent - this._viewportSize;
+
+    let newScrollOffset =
+      direction === "down"
+        ? scrollOffset + this._viewportSize
+        : scrollOffset - this._viewportSize;
+
+    newScrollOffset = Math.max(0, Math.min(maxScrollOffset, newScrollOffset));
+
+    const thumbOffset =
+      maxScrollOffset > 0
+        ? (newScrollOffset / maxScrollOffset) * this.thumbTravelSize
+        : 0;
+
+    return { scrollOffset: newScrollOffset, thumbOffset };
   }
 }

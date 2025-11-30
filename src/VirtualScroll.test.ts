@@ -915,3 +915,60 @@ describe("VirtualScroll.getVelocityItemValues (instance method)", () => {
     expect(result.velocity).toBeCloseTo(1); // 4 * 0.25
   });
 });
+
+describe("VirtualScroll.handlePageScroll (instance method)", () => {
+  it("PageDown increases scrollOffset by one viewport", () => {
+    const vs = new VirtualScroll(20);
+    vs.viewportSize = 100;
+    vs.contentSize = 400; // maxScrollOffset = 300
+    vs.trackSize = 200;
+    vs.scrollOffset = 50;
+
+    vs.handlePageScroll("down");
+    expect(vs.scrollOffset).toBe(150); // 50 + 100
+  });
+
+  it("PageUp decreases scrollOffset by one viewport", () => {
+    const vs = new VirtualScroll(20);
+    vs.viewportSize = 100;
+    vs.contentSize = 400;
+    vs.trackSize = 200;
+    vs.scrollOffset = 200;
+
+    vs.handlePageScroll("up");
+    expect(vs.scrollOffset).toBe(100); // 200 - 100
+  });
+
+  it("clamps at 0 when PageUp from start", () => {
+    const vs = new VirtualScroll(20);
+    vs.viewportSize = 100;
+    vs.contentSize = 400;
+    vs.trackSize = 200;
+    vs.scrollOffset = 0;
+
+    vs.handlePageScroll("up");
+    expect(vs.scrollOffset).toBe(0);
+  });
+
+  it("clamps at maxScrollOffset when PageDown past end", () => {
+    const vs = new VirtualScroll(20);
+    vs.viewportSize = 100;
+    vs.contentSize = 250; // maxScrollOffset = 150
+    vs.trackSize = 200;
+    vs.scrollOffset = 120;
+
+    vs.handlePageScroll("down");
+    expect(vs.scrollOffset).toBe(150); // clamped
+  });
+
+  it("resets to 0 when content fits viewport", () => {
+    const vs = new VirtualScroll(20);
+    vs.viewportSize = 300;
+    vs.contentSize = 200; // content smaller than viewport
+    vs.trackSize = 200;
+    vs.scrollOffset = 50;
+
+    vs.handlePageScroll("down");
+    expect(vs.scrollOffset).toBe(0);
+  });
+});
