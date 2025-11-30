@@ -1,41 +1,39 @@
-import { getThumbHeight } from "./getThumbHeight";
-import { getThumbTop } from "./getThumbTop";
+import { getThumbOffset } from "./getThumbOffset";
+import { getThumbSize } from "./getThumbSize";
 
 /**
- * Computes the thumb's vertical offset as a percentage of the thumb's own height,
- * suitable for direct use with CSS translateY(%).
+ * Computes the thumb's offset as a percentage of the thumb's own size,
+ * suitable for direct use with CSS translate(%).
  *
- * At scrollTop = 0 → 0%.
- * At scrollTop = maxScrollTop → (trackHeight - thumbHeight) / thumbHeight * 100%,
- * which moves the thumb so its bottom aligns flush with the track bottom.
+ * This function is axis‑agnostic: it works for both vertical (Top/Height)
+ * and horizontal (Left/Width) scrolling.
  *
- * @param scrollContainerHeight - The visible height of the scroll container (viewport).
- * @param scrollHeight - The total scrollable content height.
- * @param scrollTop - The current scrollTop of the scroll container.
- * @param trackHeight - The pixel height of the scrollbar track element.
- * @returns The translateY percentage relative to the thumb's height.
+ * At scrollOffset = 0 → 0%.
+ * At scrollOffset = maxScrollOffset → (trackSize - thumbSize) / thumbSize * 100%,
+ * which moves the thumb so its end aligns flush with the track end.
+ *
+ * @param viewportSize - The visible size of the scroll container (height or width).
+ * @param contentSize - The total scrollable content size (height or width).
+ * @param scrollOffset - The current scroll offset (scrollTop for Y, scrollLeft for X).
+ * @param trackSize - The pixel size of the scrollbar track element (height or width).
+ * @returns The translate percentage relative to the thumb's size.
  */
 export function getThumbPercent(
-  scrollContainerHeight: number,
-  scrollHeight: number,
-  scrollTop: number,
-  trackHeight: number
+  viewportSize: number,
+  contentSize: number,
+  scrollOffset: number,
+  trackSize: number
 ): number {
-  if (scrollHeight <= scrollContainerHeight) return 0;
+  if (contentSize <= viewportSize) return 0;
 
-  const thumbHeight = getThumbHeight(
-    scrollContainerHeight,
-    scrollHeight,
-    trackHeight
+  const thumbSize = getThumbSize(viewportSize, contentSize, trackSize);
+  const thumbOffset = getThumbOffset(
+    viewportSize,
+    contentSize,
+    scrollOffset,
+    trackSize
   );
 
-  const thumbTop = getThumbTop(
-    scrollContainerHeight,
-    scrollHeight,
-    scrollTop,
-    trackHeight
-  );
-
-  // Percent relative to thumb height (what CSS translateY(%) uses)
-  return (thumbTop / thumbHeight) * 100;
+  // Percent relative to thumb size (what CSS translate(%) uses)
+  return (thumbOffset / thumbSize) * 100;
 }

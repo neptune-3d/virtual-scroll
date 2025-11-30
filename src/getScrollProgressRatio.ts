@@ -1,24 +1,27 @@
-import { getMaxScrollTop } from "./getMaxScrollTop";
+import { getMaxScrollOffset } from "./getMaxScrollOffset";
 
 /**
  * Computes the normalized scroll progress ratio of a scroll container.
  *
- * This is scrollTop divided by the maximum scrollable distance.
+ * This is scrollOffset divided by the maximum scrollable distance.
  * Used when positioning the thumb relative to the track.
  *
- * @param scrollContainerHeight - The visible height of the scroll container (viewport).
- * @param scrollHeight - The total scrollable content height.
- * @param scrollTop - The current scrollTop of the scroll container.
+ * This function is axis‑agnostic: it works for both vertical (Top/Height)
+ * and horizontal (Left/Width) scrolling.
+ *
+ * @param viewportSize - The visible size of the scroll container (height or width).
+ * @param contentSize - The total scrollable content size (height or width).
+ * @param scrollOffset - The current scroll offset (scrollTop for Y, scrollLeft for X).
  * @returns A number between 0 and 1 representing scroll progress.
  */
 export function getScrollProgressRatio(
-  scrollContainerHeight: number,
-  scrollHeight: number,
-  scrollTop: number
+  viewportSize: number,
+  contentSize: number,
+  scrollOffset: number
 ): number {
-  if (scrollHeight <= scrollContainerHeight) return 0;
+  if (contentSize <= viewportSize) return 0;
 
-  const maxScrollTop = getMaxScrollTop(scrollContainerHeight, scrollHeight);
+  const maxScrollOffset = getMaxScrollOffset(viewportSize, contentSize);
 
-  return scrollTop / maxScrollTop;
+  return scrollOffset / maxScrollOffset;
 }

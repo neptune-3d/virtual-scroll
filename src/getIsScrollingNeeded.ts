@@ -1,13 +1,16 @@
 /**
  * Determines whether the content overflows the container and requires a scrollbar.
  *
- * @param scrollContainerHeight - The visible height of the scroll container (viewport).
- * @param contentHeight - The total scrollable content height.
+ * This function is axis‑agnostic: it works for both vertical (height)
+ * and horizontal (width) scrolling.
+ *
+ * @param viewportSize - The visible size of the scroll container (height or width).
+ * @param contentSize - The total scrollable content size (height or width).
  * @returns True if the content overflows and a scrollbar is needed, false otherwise.
  */
 export function getIsScrollingNeeded(
-  scrollContainerHeight: number,
-  contentHeight: number
+  viewportSize: number,
+  contentSize: number
 ): boolean {
-  return contentHeight > scrollContainerHeight;
+  return contentSize > viewportSize;
 }
