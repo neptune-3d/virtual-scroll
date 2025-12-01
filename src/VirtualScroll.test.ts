@@ -74,7 +74,7 @@ describe("VirtualScroll.scrollProgressRatio", () => {
     vs.viewportSize = 200;
     vs.contentSize = 150;
     vs.scrollOffset = 50;
-    expect(vs.scrollProgressRatio).toBe(0);
+    expect(vs.scrollRatio).toBe(0);
   });
 
   it("returns 0 when scrollOffset is at the start", () => {
@@ -82,7 +82,7 @@ describe("VirtualScroll.scrollProgressRatio", () => {
     vs.viewportSize = 100;
     vs.contentSize = 300;
     vs.scrollOffset = 0;
-    expect(vs.scrollProgressRatio).toBe(0);
+    expect(vs.scrollRatio).toBe(0);
   });
 
   it("returns 1 when scrollOffset is at the maximum", () => {
@@ -90,7 +90,7 @@ describe("VirtualScroll.scrollProgressRatio", () => {
     vs.viewportSize = 100;
     vs.contentSize = 300;
     vs.scrollOffset = vs.maxScrollOffset; // 200
-    expect(vs.scrollProgressRatio).toBe(1);
+    expect(vs.scrollRatio).toBe(1);
   });
 
   it("returns 0.5 when scrollOffset is halfway", () => {
@@ -98,25 +98,25 @@ describe("VirtualScroll.scrollProgressRatio", () => {
     vs.viewportSize = 100;
     vs.contentSize = 300;
     vs.scrollOffset = 100;
-    expect(vs.scrollProgressRatio).toBeCloseTo(0.5);
+    expect(vs.scrollRatio).toBeCloseTo(0.5);
   });
 
   it("clamps ratio when set beyond 1", () => {
     const vs = new VirtualScroll(undefined, 20);
     vs.viewportSize = 100;
     vs.contentSize = 300;
-    vs.scrollProgressRatio = 2; // attempt to set beyond max
+    vs.scrollRatio = 2; // attempt to set beyond max
     expect(vs.scrollOffset).toBe(vs.maxScrollOffset);
-    expect(vs.scrollProgressRatio).toBe(1);
+    expect(vs.scrollRatio).toBe(1);
   });
 
   it("clamps ratio when set below 0", () => {
     const vs = new VirtualScroll(undefined, 20);
     vs.viewportSize = 100;
     vs.contentSize = 300;
-    vs.scrollProgressRatio = -1; // attempt to set below min
+    vs.scrollRatio = -1; // attempt to set below min
     expect(vs.scrollOffset).toBe(0);
-    expect(vs.scrollProgressRatio).toBe(0);
+    expect(vs.scrollRatio).toBe(0);
   });
 });
 
@@ -126,7 +126,7 @@ describe("VirtualScroll.scrollProgressRatio setter", () => {
     vs.viewportSize = 100;
     vs.contentSize = 300; // maxScrollOffset = 200
 
-    vs.scrollProgressRatio = 0.5;
+    vs.scrollRatio = 0.5;
     expect(vs.scrollOffset).toBeCloseTo(100); // halfway
   });
 
@@ -135,7 +135,7 @@ describe("VirtualScroll.scrollProgressRatio setter", () => {
     vs.viewportSize = 100;
     vs.contentSize = 300;
 
-    vs.scrollProgressRatio = -1;
+    vs.scrollRatio = -1;
     expect(vs.scrollOffset).toBe(0);
   });
 
@@ -144,7 +144,7 @@ describe("VirtualScroll.scrollProgressRatio setter", () => {
     vs.viewportSize = 100;
     vs.contentSize = 300; // maxScrollOffset = 200
 
-    vs.scrollProgressRatio = 2;
+    vs.scrollRatio = 2;
     expect(vs.scrollOffset).toBe(200);
   });
 
@@ -153,10 +153,10 @@ describe("VirtualScroll.scrollProgressRatio setter", () => {
     vs.viewportSize = 100;
     vs.contentSize = 300;
 
-    vs.scrollProgressRatio = 0;
+    vs.scrollRatio = 0;
     expect(vs.scrollOffset).toBe(0);
 
-    vs.scrollProgressRatio = 1;
+    vs.scrollRatio = 1;
     expect(vs.scrollOffset).toBe(vs.maxScrollOffset);
   });
 });
@@ -278,7 +278,7 @@ describe("VirtualScroll.thumbOffset", () => {
     vs.contentSize = 300; // maxScrollOffset = 200
     vs.trackSize = 100;
     vs.scrollOffset = 0;
-    expect(vs.scrollProgressRatio).toBe(0);
+    expect(vs.scrollRatio).toBe(0);
     expect(vs.thumbOffset).toBe(0);
   });
 
@@ -288,7 +288,7 @@ describe("VirtualScroll.thumbOffset", () => {
     vs.contentSize = 300; // maxScrollOffset = 200
     vs.trackSize = 100;
     vs.scrollOffset = vs.maxScrollOffset; // 200
-    expect(vs.scrollProgressRatio).toBe(1);
+    expect(vs.scrollRatio).toBe(1);
     expect(vs.thumbOffset).toBe(vs.thumbTravelSize);
   });
 
@@ -298,7 +298,7 @@ describe("VirtualScroll.thumbOffset", () => {
     vs.contentSize = 300; // maxScrollOffset = 200
     vs.trackSize = 100;
     vs.scrollOffset = 100; // halfway
-    expect(vs.scrollProgressRatio).toBeCloseTo(0.5);
+    expect(vs.scrollRatio).toBeCloseTo(0.5);
     expect(vs.thumbOffset).toBeCloseTo(vs.thumbTravelSize / 2);
   });
 
@@ -941,41 +941,41 @@ describe("VirtualScroll measurement setters restore scrollOffset", () => {
     scroll.contentSize = 1000;
     scroll.trackSize = 200;
     // scroll to 50% down
-    scroll.scrollProgressRatio = 0.5;
+    scroll.scrollRatio = 0.5;
   });
 
   it("restores scrollOffset proportionally when viewportSize changes", () => {
-    const oldRatio = scroll.scrollProgressRatio;
+    const oldRatio = scroll.scrollRatio;
     scroll.viewportSize = 200; // change viewport
-    expect(scroll.scrollProgressRatio).toBeCloseTo(oldRatio);
+    expect(scroll.scrollRatio).toBeCloseTo(oldRatio);
     expect(scroll.scrollOffset).toBeCloseTo(oldRatio * scroll.maxScrollOffset);
   });
 
   it("restores scrollOffset proportionally when contentSize changes", () => {
-    const oldRatio = scroll.scrollProgressRatio;
+    const oldRatio = scroll.scrollRatio;
     scroll.contentSize = 2000; // double content
-    expect(scroll.scrollProgressRatio).toBeCloseTo(oldRatio);
+    expect(scroll.scrollRatio).toBeCloseTo(oldRatio);
     expect(scroll.scrollOffset).toBeCloseTo(oldRatio * scroll.maxScrollOffset);
   });
 
   it("restores scrollOffset proportionally when trackSize changes", () => {
-    const oldRatio = scroll.scrollProgressRatio;
+    const oldRatio = scroll.scrollRatio;
     scroll.trackSize = 400; // double track
     // trackSize affects thumb size but ratio should remain
-    expect(scroll.scrollProgressRatio).toBeCloseTo(oldRatio);
+    expect(scroll.scrollRatio).toBeCloseTo(oldRatio);
     expect(scroll.scrollOffset).toBeCloseTo(oldRatio * scroll.maxScrollOffset);
   });
 
   it("clamps scrollOffset to 0 when content fits viewport", () => {
-    scroll.scrollProgressRatio = 0.8;
+    scroll.scrollRatio = 0.8;
     scroll.contentSize = 80; // smaller than viewport
     expect(scroll.scrollOffset).toBe(0);
-    expect(scroll.scrollProgressRatio).toBe(0);
+    expect(scroll.scrollRatio).toBe(0);
   });
 
   it("restores bottom position correctly after shrinking viewport", () => {
     // move to bottom
-    scroll.scrollProgressRatio = 1;
+    scroll.scrollRatio = 1;
     const oldMax = scroll.maxScrollOffset;
     expect(scroll.scrollOffset).toBeCloseTo(oldMax);
 
@@ -983,7 +983,7 @@ describe("VirtualScroll measurement setters restore scrollOffset", () => {
     scroll.viewportSize = 50;
     const newMax = scroll.maxScrollOffset;
     expect(scroll.scrollOffset).toBeCloseTo(newMax);
-    expect(scroll.scrollProgressRatio).toBe(1);
+    expect(scroll.scrollRatio).toBe(1);
   });
 });
 
@@ -995,13 +995,13 @@ describe("VirtualScroll preserves old ratio across measurement changes", () => {
     scroll.viewportSize = 100; // max = 1000 - 100 = 900
     scroll.contentSize = 1000;
     scroll.trackSize = 200;
-    scroll.scrollProgressRatio = 0.5; // offset = 450
+    scroll.scrollRatio = 0.5; // offset = 450
   });
 
   it("preserves ratio when viewportSize increases", () => {
-    const oldRatio = scroll.scrollProgressRatio; // 0.5
+    const oldRatio = scroll.scrollRatio; // 0.5
     scroll.viewportSize = 200; // new max = 800
-    expect(scroll.scrollProgressRatio).toBeCloseTo(oldRatio, 6);
+    expect(scroll.scrollRatio).toBeCloseTo(oldRatio, 6);
     expect(scroll.scrollOffset).toBeCloseTo(
       oldRatio * scroll.maxScrollOffset,
       6
@@ -1009,9 +1009,9 @@ describe("VirtualScroll preserves old ratio across measurement changes", () => {
   });
 
   it("preserves ratio when contentSize increases", () => {
-    const oldRatio = scroll.scrollProgressRatio; // 0.5
+    const oldRatio = scroll.scrollRatio; // 0.5
     scroll.contentSize = 2000; // new max = 2000 - 100 = 1900
-    expect(scroll.scrollProgressRatio).toBeCloseTo(oldRatio, 6);
+    expect(scroll.scrollRatio).toBeCloseTo(oldRatio, 6);
     expect(scroll.scrollOffset).toBeCloseTo(
       oldRatio * scroll.maxScrollOffset,
       6
@@ -1019,25 +1019,80 @@ describe("VirtualScroll preserves old ratio across measurement changes", () => {
   });
 
   it("bottom remains bottom after shrinking viewport", () => {
-    scroll.scrollProgressRatio = 1; // offset = old max (900)
-    const oldRatio = scroll.scrollProgressRatio; // snapshot 1
+    scroll.scrollRatio = 1; // offset = old max (900)
+    const oldRatio = scroll.scrollRatio; // snapshot 1
     scroll.viewportSize = 50; // new max = 950
-    expect(scroll.scrollProgressRatio).toBeCloseTo(oldRatio, 6);
+    expect(scroll.scrollRatio).toBeCloseTo(oldRatio, 6);
     expect(scroll.scrollOffset).toBeCloseTo(scroll.maxScrollOffset, 6);
   });
 
   it("content fits viewport clamps to top", () => {
-    scroll.scrollProgressRatio = 0.8;
+    scroll.scrollRatio = 0.8;
     scroll.contentSize = 80; // <= viewportSize (100)
     expect(scroll.scrollOffset).toBe(0);
-    expect(scroll.scrollProgressRatio).toBe(0);
+    expect(scroll.scrollRatio).toBe(0);
   });
 
   it("trackSize change does not alter ratio or offset", () => {
-    const oldRatio = scroll.scrollProgressRatio;
+    const oldRatio = scroll.scrollRatio;
     const oldOffset = scroll.scrollOffset;
     scroll.trackSize = 400;
-    expect(scroll.scrollProgressRatio).toBeCloseTo(oldRatio, 6);
+    expect(scroll.scrollRatio).toBeCloseTo(oldRatio, 6);
     expect(scroll.scrollOffset).toBe(oldOffset);
+  });
+});
+
+describe("VirtualScroll boundary checks", () => {
+  it("reports at top when scrollOffset is exactly 0", () => {
+    const vs = new VirtualScroll();
+    // configure content and viewport so maxScrollOffset > 0
+    vs.contentSize = 200;
+    vs.viewportSize = 100;
+    vs.scrollOffset = 0;
+
+    expect(vs.isScrollAtTop).toBe(true);
+    expect(vs.isScrollAtBottom).toBe(false);
+  });
+
+  it("reports at bottom when scrollOffset equals maxScrollOffset", () => {
+    const vs = new VirtualScroll();
+    vs.contentSize = 200;
+    vs.viewportSize = 100;
+    vs.scrollOffset = vs.maxScrollOffset;
+
+    expect(vs.isScrollAtBottom).toBe(true);
+    expect(vs.isScrollAtTop).toBe(false);
+  });
+
+  it("reports at top when scrollOffset is within tolerance of 0", () => {
+    const vs = new VirtualScroll();
+    vs.contentSize = 200;
+    vs.viewportSize = 100;
+    const eps = vs["scrollPositionToleranceRange"];
+    vs.scrollOffset = eps / 2;
+
+    expect(vs.isScrollAtTop).toBe(true);
+    expect(vs.isScrollAtBottom).toBe(false);
+  });
+
+  it("reports at bottom when scrollOffset is within tolerance of maxScrollOffset", () => {
+    const vs = new VirtualScroll();
+    vs.contentSize = 200;
+    vs.viewportSize = 100;
+    const eps = vs["scrollPositionToleranceRange"];
+    vs.scrollOffset = vs.maxScrollOffset - eps / 2;
+
+    expect(vs.isScrollAtBottom).toBe(true);
+    expect(vs.isScrollAtTop).toBe(false);
+  });
+
+  it("reports neither top nor bottom when scrollOffset is in the middle", () => {
+    const vs = new VirtualScroll();
+    vs.contentSize = 200;
+    vs.viewportSize = 100;
+    vs.scrollOffset = vs.maxScrollOffset / 2;
+
+    expect(vs.isScrollAtTop).toBe(false);
+    expect(vs.isScrollAtBottom).toBe(false);
   });
 });

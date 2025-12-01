@@ -84,7 +84,7 @@ export class VirtualScroll {
    * adjusted to preserve the old ratio relative to the new maxScrollOffset
    */
   set viewportSize(value: number) {
-    const oldRatio = this.scrollProgressRatio;
+    const oldRatio = this.scrollRatio;
     this._viewportSize = value;
     this.updateMeasurements(oldRatio);
   }
@@ -102,7 +102,7 @@ export class VirtualScroll {
    * adjusted to preserve the old ratio relative to the new maxScrollOffset.
    */
   set contentSize(value: number) {
-    const oldRatio = this.scrollProgressRatio;
+    const oldRatio = this.scrollRatio;
     this._contentSize = value;
     this.updateMeasurements(oldRatio);
   }
@@ -267,12 +267,24 @@ export class VirtualScroll {
    * Normalized scroll progress ratio between 0 and 1.
    * 0 → at start, 1 → at max scroll.
    */
-  get scrollProgressRatio(): number {
+  get scrollRatio(): number {
     if (!this.isScrollingNeeded) return 0;
     return this._scrollOffset / this.maxScrollOffset;
   }
 
-  set scrollProgressRatio(ratio: number) {
+  /**
+   * Sets the normalized scroll progress ratio between 0 and 1.
+   *
+   * The provided ratio is clamped to the valid range [0, 1] and then
+   * converted back into an absolute scroll offset based on the current
+   * `maxScrollOffset`. This allows external code to restore or adjust
+   * scroll position in a resolution‑independent way.
+   *
+   * A common use case is scroll restoration: you can persist the ratio
+   * (e.g. 0.5 for halfway down) and later restore it regardless of
+   * content or viewport size changes.
+   */
+  set scrollRatio(ratio: number) {
     if (!this.isScrollingNeeded) {
       this._scrollOffset = 0;
       return;
@@ -302,7 +314,7 @@ export class VirtualScroll {
    */
   get thumbOffset(): number {
     if (!this.isScrollingNeeded) return 0;
-    return this.scrollProgressRatio * this.thumbTravelSize;
+    return this.scrollRatio * this.thumbTravelSize;
   }
 
   /** Percentage of the thumb offset relative to thumb size (0–100). */
@@ -320,6 +332,54 @@ export class VirtualScroll {
   get trackToScrollFactor(): number {
     if (!this.isScrollingNeeded) return 0;
     return this.thumbTravelSize / this.maxScrollOffset;
+  }
+
+  /**
+   * Returns true if the scroll is currently at the top.
+   *
+   * The check allows for a small tolerance near the top boundary
+   * to account for floating‑point drift. In practice, this means
+   * the scroll is considered "at top" if `scrollOffset` is very
+   * close to zero.
+   *
+   * For a strict check without tolerance, compare
+   * `scrollOffset === 0`.
+   */
+  get isScrollAtTop(): boolean {
+    const range = this.maxScrollOffset;
+    if (range <= 0) return true; // no scroll: treat as top
+    return this._scrollOffset <= this.scrollPositionToleranceRange;
+  }
+
+  /**
+   * Returns true if the scroll is currently at the bottom.
+   *
+   * The check allows for a small tolerance near the bottom boundary
+   * to account for floating‑point drift in inertia math. In practice,
+   * this means the scroll is considered "at bottom" if `scrollOffset`
+   * is very close to `maxScrollOffset`.
+   *
+   * For a strict check without tolerance, compare
+   * `scrollOffset === maxScrollOffset`.
+   */
+  get isScrollAtBottom(): boolean {
+    const range = this.maxScrollOffset;
+    if (range <= 0) return false; // no scroll: not bottom
+    return (
+      Math.abs(this._scrollOffset - range) <= this.scrollPositionToleranceRange
+    );
+  }
+
+  /**
+   * Internal tolerance range used when checking proximity to
+   * scroll boundaries (top = 0, bottom = maxScrollOffset).
+   * Scaled relative to the scrollable range to absorb
+   * floating‑point drift.
+   */
+  protected get scrollPositionToleranceRange(): number {
+    const range = this.maxScrollOffset;
+    if (range <= 0) return 0;
+    return range * 1e-6;
   }
 
   /**
@@ -493,7 +553,9 @@ export class VirtualScroll {
       if (Math.abs(currentVelocity) < threshold) {
         if (velocityRef === "px") {
           this._pxVelocity = 0;
-        } else {
+        }
+        //
+        else {
           this._itemVelocity = 0;
         }
         this._wheelAnimationFrame = null;
@@ -505,7 +567,9 @@ export class VirtualScroll {
 
       if (velocityRef === "px") {
         this._pxVelocity = values.velocity;
-      } else {
+      }
+      //
+      else {
         this._itemVelocity = values.velocity;
       }
 
@@ -522,7 +586,9 @@ export class VirtualScroll {
   protected getWheelPxDelta(delta: number, deltaMode: number): number {
     if (deltaMode === 1) {
       return delta * this._itemSize; // line units → px
-    } else if (deltaMode === 2) {
+    }
+    //
+    else if (deltaMode === 2) {
       return delta * this._viewportSize; // page units → px
     }
     return delta; // pixel mode
@@ -567,7 +633,9 @@ export class VirtualScroll {
   protected getWheelItemDelta(delta: number, deltaMode: number): number {
     if (deltaMode === 1) {
       return delta; // line units
-    } else if (deltaMode === 2) {
+    }
+    //
+    else if (deltaMode === 2) {
       return delta * (this._viewportSize / this._itemSize); // page units → items
     }
     return Math.sign(delta); // pixel mode → ±1 item
