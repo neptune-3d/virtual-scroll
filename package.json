@@ -1,10 +1,12 @@
 {
   "name": "@neptune3d/virtual-scroll",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "Math and helpers for implementing a virtual scrollbar.",
   "keywords": [
     "virtual",
-    "scroll"
+    "scroll",
+    "fake",
+    "scrollbar"
   ],
   "type": "module",
   "license": "MIT",
