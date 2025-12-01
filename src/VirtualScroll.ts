@@ -386,10 +386,23 @@ export class VirtualScroll {
   }
 
   /**
-   * Disposes of the VirtualScroll instance by stopping any active inertia loops
-   * and resetting velocities. Safe to call from outside when cleaning up.
+   * Disposes of the VirtualScroll instance.
+   *
+   * This method cancels any active wheel or item-based inertia animation
+   * loops by clearing the current `requestAnimationFrame` handle and
+   * resetting both velocity fields to zero. It ensures that no further
+   * scroll updates are scheduled once the instance is disposed.
+   *
+   * Typical usage is when the VirtualScroll is no longer needed, such as
+   * when unmounting a component or tearing down an application view.
+   * Calling this method is idempotent: it is safe to call multiple times
+   * without side effects.
+   *
+   * After disposal, the instance remains in a valid but inert state. You
+   * may still query properties like `scrollOffset`, but no inertia-driven
+   * updates will occur until new input handlers are invoked.
    */
-  public dispose(): void {
+  dispose(): void {
     if (this._wheelAnimationFrame !== null) {
       cancelAnimationFrame(this._wheelAnimationFrame);
       this._wheelAnimationFrame = null;
