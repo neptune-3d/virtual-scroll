@@ -10,15 +10,6 @@
  * - Inertia: requestAnimationFrame loops that apply velocity, decay it over time,
  *   and update scrollOffset until motion naturally stops.
  *
- * Fields:
- * - `_viewportSize`, `_contentSize`, `_trackSize`: dimensions of the scroll container and track.
- * - `_scrollOffset`: current scroll position in px.
- * - `_minThumbSize`: minimum thumb size for accessibility.
- * - `_itemSize`, `_itemCount`: item geometry for item-based scrolling.
- * - `_wheelVelocity`: current velocity in px units (for pixel-based inertia).
- * - `_itemVelocity`: current velocity in item units (for item-based inertia).
- * - `_wheelAnimationFrame`: active animation frame handle for inertia loops.
- *
  * Usage:
  * - Configure viewport/content/track sizes and itemSize/itemCount.
  * - Call `handleWheelPx(deltaY, deltaMode)` for continuous px-based scrolling.
@@ -76,7 +67,7 @@ export class VirtualScroll {
   protected _maxVelocityItemStep = 3;
   protected _inertiaDecay: number = 0.7;
 
-  protected _wheelVelocity: number = 0;
+  protected _pxVelocity: number = 0;
   protected _itemVelocity: number = 0;
   protected _wheelAnimationFrame: number | null = null;
 
@@ -416,14 +407,14 @@ export class VirtualScroll {
    * How it works:
    * - Normalizes the wheel delta into pixel units (line/page → px).
    * - Converts that pixel delta into a discrete velocity step.
-   * - Accumulates velocity into `_wheelVelocity`.
+   * - Accumulates velocity into `_pxVelocity`.
    * - Starts the inertia loop if not already running.
    */
   handleWheelPx(deltaY: number, deltaMode: number): void {
     const deltaPx = this.getWheelPxDelta(deltaY, deltaMode);
 
     const step = this.getVelocityPxStep(deltaPx);
-    this._wheelVelocity += step;
+    this._pxVelocity += step;
 
     if (this._wheelAnimationFrame === null) {
       this.startWheelInertia("px", 0.5, this.getVelocityPxValues);
@@ -454,29 +445,25 @@ export class VirtualScroll {
   }
 
   /**
-   * Disposes of the VirtualScroll instance.
+   * Stops any active inertia-driven scrolling.
    *
-   * This method cancels any active wheel or item-based inertia animation
-   * loops by clearing the current `requestAnimationFrame` handle and
-   * resetting both velocity fields to zero. It ensures that no further
-   * scroll updates are scheduled once the instance is disposed.
+   * Cancels the current `requestAnimationFrame` loop (if running) and
+   * resets both pixel and item velocity fields to zero. After calling
+   * this method, no further inertia updates will occur until new input
+   * handlers are invoked.
    *
-   * Typical usage is when the VirtualScroll is no longer needed, such as
-   * when unmounting a component or tearing down an application view.
-   * Calling this method is idempotent: it is safe to call multiple times
-   * without side effects.
-   *
-   * After disposal, the instance remains in a valid but inert state. You
-   * may still query properties like `scrollOffset`, but no inertia-driven
-   * updates will occur until new input handlers are invoked.
+   * Typical usage is when you need to immediately halt momentum scrolling,
+   * such as when the user performs a direct jump (e.g., track click) or
+   * when unmounting a component. This method is idempotent: it is safe to
+   * call multiple times without side effects.
    */
-  dispose(): void {
+  stopInertia(): void {
     if (this._wheelAnimationFrame !== null) {
       cancelAnimationFrame(this._wheelAnimationFrame);
       this._wheelAnimationFrame = null;
     }
 
-    this._wheelVelocity = 0;
+    this._pxVelocity = 0;
     this._itemVelocity = 0;
   }
 
@@ -501,11 +488,11 @@ export class VirtualScroll {
   ): void {
     const step = () => {
       const currentVelocity =
-        velocityRef === "px" ? this._wheelVelocity : this._itemVelocity;
+        velocityRef === "px" ? this._pxVelocity : this._itemVelocity;
 
       if (Math.abs(currentVelocity) < threshold) {
         if (velocityRef === "px") {
-          this._wheelVelocity = 0;
+          this._pxVelocity = 0;
         } else {
           this._itemVelocity = 0;
         }
@@ -517,7 +504,7 @@ export class VirtualScroll {
       this._scrollOffset = values.scrollOffset;
 
       if (velocityRef === "px") {
-        this._wheelVelocity = values.velocity;
+        this._pxVelocity = values.velocity;
       } else {
         this._itemVelocity = values.velocity;
       }
