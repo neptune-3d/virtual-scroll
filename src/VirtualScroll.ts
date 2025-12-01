@@ -32,8 +32,24 @@
  */
 
 export class VirtualScroll {
-  constructor(itemSize: number = 1) {
+  /**
+   * Creates a new VirtualScroll instance.
+   *
+   * @param itemSize - The fixed size of each scrollable item in pixels (or logical units).
+   *                   Defaults to `1`. This value is used to calculate scroll offsets,
+   *                   velocity steps, and snapping behavior.
+   * @param onUpdate - Optional callback invoked whenever the internal scroll state changes.
+   *                   This allows the host application to update its UI (e.g., reposition
+   *                   a thumb, redraw visible items). If omitted, no callback is triggered.
+   *
+   * The constructor initializes the scroll model with the given item size and registers
+   * an optional update callback. All state-mutating methods (such as wheel handling,
+   * track clicks, or page scrolling) will call `onUpdate` whenever `_scrollOffset` or
+   * velocity values change.
+   */
+  constructor(itemSize: number = 1, onUpdate?: () => void) {
     this._itemSize = itemSize;
+    this._onUpdate = onUpdate;
   }
 
   protected _viewportSize: number = 0;
@@ -42,6 +58,7 @@ export class VirtualScroll {
   protected _scrollOffset: number = 0;
   protected _itemSize: number;
   protected _itemCount: number = 0;
+  protected _onUpdate?: () => void;
 
   protected _minThumbSize: number = 12;
   protected _minVelocityPxStep = 10;
@@ -247,6 +264,7 @@ export class VirtualScroll {
   handleDelta(delta: number): void {
     if (this._contentSize <= this._viewportSize) {
       this._scrollOffset = 0;
+      this._onUpdate?.();
       return;
     }
 
@@ -259,6 +277,8 @@ export class VirtualScroll {
     );
 
     this._scrollOffset = newScrollOffset;
+
+    this._onUpdate?.();
   }
 
   /**
@@ -271,6 +291,7 @@ export class VirtualScroll {
   handleTrackClick(clientCoord: number, viewportTrackStart: number): void {
     if (this._contentSize <= this._viewportSize) {
       this._scrollOffset = 0;
+      this._onUpdate?.();
       return;
     }
 
@@ -291,6 +312,31 @@ export class VirtualScroll {
       this.thumbTravelSize > 0
         ? (clampedThumbOffset / this.thumbTravelSize) * this.maxScrollOffset
         : 0;
+
+    this._onUpdate?.();
+  }
+
+  /**
+   * Applies a PageUp/PageDown jump to update scrollOffset.
+   * Delegates to getPageScrollValues for the math.
+   *
+   * @param direction - "up" for PageUp, "down" for PageDown.
+   */
+  handlePageScroll(direction: "up" | "down"): void {
+    if (this._contentSize <= this._viewportSize) {
+      this._scrollOffset = 0;
+      this._onUpdate?.();
+      return;
+    }
+
+    const { scrollOffset } = this.getPageScrollValues(
+      this._scrollOffset,
+      direction
+    );
+
+    this._scrollOffset = scrollOffset;
+
+    this._onUpdate?.();
   }
 
   /**
@@ -340,22 +386,17 @@ export class VirtualScroll {
   }
 
   /**
-   * Applies a PageUp/PageDown jump to update scrollOffset.
-   * Delegates to getPageScrollValues for the math.
-   *
-   * @param direction - "up" for PageUp, "down" for PageDown.
+   * Disposes of the VirtualScroll instance by stopping any active inertia loops
+   * and resetting velocities. Safe to call from outside when cleaning up.
    */
-  handlePageScroll(direction: "up" | "down"): void {
-    if (this._contentSize <= this._viewportSize) {
-      this._scrollOffset = 0;
-      return;
+  public dispose(): void {
+    if (this._wheelAnimationFrame !== null) {
+      cancelAnimationFrame(this._wheelAnimationFrame);
+      this._wheelAnimationFrame = null;
     }
 
-    const { scrollOffset } = this.getPageScrollValues(
-      this._scrollOffset,
-      direction
-    );
-    this._scrollOffset = scrollOffset;
+    this._wheelVelocity = 0;
+    this._itemVelocity = 0;
   }
 
   protected startWheelInertia(): void {
@@ -374,6 +415,8 @@ export class VirtualScroll {
       this._scrollOffset = values.scrollOffset;
       this._wheelVelocity = values.velocity;
 
+      this._onUpdate?.();
+
       this._wheelAnimationFrame = requestAnimationFrame(step);
     };
 
@@ -381,14 +424,6 @@ export class VirtualScroll {
       cancelAnimationFrame(this._wheelAnimationFrame);
     }
     this._wheelAnimationFrame = requestAnimationFrame(step);
-  }
-
-  protected stopWheelInertia(): void {
-    if (this._wheelAnimationFrame !== null) {
-      cancelAnimationFrame(this._wheelAnimationFrame);
-      this._wheelAnimationFrame = null;
-    }
-    this._wheelVelocity = 0;
   }
 
   protected startWheelItemInertia(): void {
@@ -407,6 +442,8 @@ export class VirtualScroll {
       this._scrollOffset = values.scrollOffset;
       this._itemVelocity = values.velocity;
 
+      this._onUpdate?.();
+
       this._wheelAnimationFrame = requestAnimationFrame(step);
     };
 
@@ -414,14 +451,6 @@ export class VirtualScroll {
       cancelAnimationFrame(this._wheelAnimationFrame);
     }
     this._wheelAnimationFrame = requestAnimationFrame(step);
-  }
-
-  protected stopWheelItemInertia(): void {
-    if (this._wheelAnimationFrame !== null) {
-      cancelAnimationFrame(this._wheelAnimationFrame);
-      this._wheelAnimationFrame = null;
-    }
-    this._itemVelocity = 0;
   }
 
   protected getWheelPxDelta(delta: number, deltaMode: number): number {
