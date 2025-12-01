@@ -426,7 +426,7 @@ export class VirtualScroll {
     this._wheelVelocity += step;
 
     if (this._wheelAnimationFrame === null) {
-      this.startWheelInertia();
+      this.startWheelInertia("px", 0.5, this.getVelocityPxValues);
     }
   }
 
@@ -449,7 +449,7 @@ export class VirtualScroll {
     this._itemVelocity += step;
 
     if (this._wheelAnimationFrame === null) {
-      this.startWheelItemInertia();
+      this.startWheelInertia("item", 0.01, this.getVelocityItemValues);
     }
   }
 
@@ -491,51 +491,38 @@ export class VirtualScroll {
     }
   }
 
-  protected startWheelInertia(): void {
+  protected startWheelInertia(
+    velocityRef: "px" | "item",
+    threshold: number,
+    getValues: (
+      offset: number,
+      velocity: number
+    ) => { scrollOffset: number; velocity: number }
+  ): void {
     const step = () => {
-      if (Math.abs(this._wheelVelocity) < 0.5) {
-        this._wheelVelocity = 0;
+      const currentVelocity =
+        velocityRef === "px" ? this._wheelVelocity : this._itemVelocity;
+
+      if (Math.abs(currentVelocity) < threshold) {
+        if (velocityRef === "px") {
+          this._wheelVelocity = 0;
+        } else {
+          this._itemVelocity = 0;
+        }
         this._wheelAnimationFrame = null;
         return;
       }
 
-      const values = this.getVelocityPxValues(
-        this._scrollOffset,
-        this._wheelVelocity
-      );
-
+      const values = getValues(this._scrollOffset, currentVelocity);
       this._scrollOffset = values.scrollOffset;
-      this._wheelVelocity = values.velocity;
 
-      this._onScroll?.();
-
-      this._wheelAnimationFrame = requestAnimationFrame(step);
-    };
-
-    if (this._wheelAnimationFrame !== null) {
-      cancelAnimationFrame(this._wheelAnimationFrame);
-    }
-    this._wheelAnimationFrame = requestAnimationFrame(step);
-  }
-
-  protected startWheelItemInertia(): void {
-    const step = () => {
-      if (Math.abs(this._itemVelocity) < 0.01) {
-        this._itemVelocity = 0;
-        this._wheelAnimationFrame = null;
-        return;
+      if (velocityRef === "px") {
+        this._wheelVelocity = values.velocity;
+      } else {
+        this._itemVelocity = values.velocity;
       }
 
-      const values = this.getVelocityItemValues(
-        this._scrollOffset,
-        this._itemVelocity
-      );
-
-      this._scrollOffset = values.scrollOffset;
-      this._itemVelocity = values.velocity;
-
       this._onScroll?.();
-
       this._wheelAnimationFrame = requestAnimationFrame(step);
     };
 
@@ -566,10 +553,10 @@ export class VirtualScroll {
     return sign * clamped;
   }
 
-  protected getVelocityPxValues(
+  protected getVelocityPxValues = (
     scrollOffset: number,
     velocityPx: number
-  ): { scrollOffset: number; velocity: number; thumbOffset: number } {
+  ): { scrollOffset: number; velocity: number; thumbOffset: number } => {
     const scrollExtent = Math.max(this._contentSize, this._viewportSize);
     const maxScrollOffset = scrollExtent - this._viewportSize;
 
@@ -588,7 +575,7 @@ export class VirtualScroll {
       velocity: nextVelocity,
       thumbOffset,
     };
-  }
+  };
 
   protected getWheelItemDelta(delta: number, deltaMode: number): number {
     if (deltaMode === 1) {
@@ -610,10 +597,10 @@ export class VirtualScroll {
     return sign * clamped;
   }
 
-  protected getVelocityItemValues(
+  protected getVelocityItemValues = (
     scrollOffset: number,
     itemVelocity: number
-  ): { scrollOffset: number; velocity: number; thumbOffset: number } {
+  ): { scrollOffset: number; velocity: number; thumbOffset: number } => {
     const scrollExtent = Math.max(this._contentSize, this._viewportSize);
     const remainder = this._viewportSize % this._itemSize;
     const downOffset = remainder === 0 ? 0 : this._itemSize - remainder;
@@ -656,7 +643,7 @@ export class VirtualScroll {
       velocity: nextVelocity,
       thumbOffset,
     };
-  }
+  };
 
   protected getPageScrollValues(
     scrollOffset: number,
