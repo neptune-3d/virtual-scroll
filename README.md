@@ -7,3 +7,38 @@ Math and helpers for implementing a virtual scrollbar.
 ```bash
 npm install neptune3d/virtual-scroll
 ```
+
+## Basic example:
+
+```ts
+const scroll = new VirtualScroll({
+  getViewportSize: () => 800,
+  getContentSize: () => 1200,
+  getTrackSize: () => 800,
+  onScroll: () => {
+    // thumbOffset is a getter that uses the newest scrollOffset value
+    thumb.style.transform = `translateY(${scroll.thumbOffset}px)`;
+
+    // also update the list position etc...
+  },
+});
+
+const track = document.createElement("div");
+
+track.style.height = 800;
+track.style.position = "relative";
+// other track styles
+
+const trackRect = track.getBoundingClientRect(); // or even better if you can calculate it without reading from the DOM
+
+track.addEventListener("click", (e) => {
+  scroll.handleTrackClick(e.clientY, trackRect.top); // updates scrollOffset
+});
+
+const thumb = document.createElement("div");
+
+thumb.style.position = "absolute";
+// other thumb styles
+
+track.append(thumb);
+```
