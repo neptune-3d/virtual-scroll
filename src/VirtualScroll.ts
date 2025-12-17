@@ -448,7 +448,7 @@ export class VirtualScroll {
       return;
     }
 
-    const { scrollOffset } = this.getPageScrollValues(
+    const scrollOffset = this.getPageScrollOffset(
       this._scrollOffset,
       direction
     );
@@ -609,7 +609,7 @@ export class VirtualScroll {
   protected getVelocityPxValues = (
     scrollOffset: number,
     velocityPx: number
-  ): { scrollOffset: number; velocity: number; thumbOffset: number } => {
+  ): { scrollOffset: number; velocity: number } => {
     const scrollExtent = Math.max(this._contentSize, this._viewportSize);
     const maxScrollOffset = scrollExtent - this._viewportSize;
 
@@ -618,15 +618,9 @@ export class VirtualScroll {
 
     const nextVelocity = velocityPx * this._inertiaDecay;
 
-    const thumbOffset =
-      maxScrollOffset > 0
-        ? (newScrollOffset / maxScrollOffset) * this.thumbTravelSize
-        : 0;
-
     return {
       scrollOffset: newScrollOffset,
       velocity: nextVelocity,
-      thumbOffset,
     };
   };
 
@@ -655,7 +649,7 @@ export class VirtualScroll {
   protected getVelocityItemValues = (
     scrollOffset: number,
     itemVelocity: number
-  ): { scrollOffset: number; velocity: number; thumbOffset: number } => {
+  ): { scrollOffset: number; velocity: number } => {
     const scrollExtent = Math.max(this._contentSize, this._viewportSize);
     const remainder = this._viewportSize % this._itemSize;
     const downOffset = remainder === 0 ? 0 : this._itemSize - remainder;
@@ -687,23 +681,16 @@ export class VirtualScroll {
     const maxScrollOffset = scrollExtent - this._viewportSize;
     newScrollOffset = Math.max(0, Math.min(maxScrollOffset, newScrollOffset));
 
-    const thumbOffset =
-      maxScrollOffset > 0
-        ? (newScrollOffset / maxScrollOffset) *
-          (this._trackSize - Math.max(1, this._itemSize))
-        : 0;
-
     return {
       scrollOffset: newScrollOffset,
       velocity: nextVelocity,
-      thumbOffset,
     };
   };
 
-  protected getPageScrollValues(
+  protected getPageScrollOffset(
     scrollOffset: number,
     direction: "up" | "down"
-  ): { scrollOffset: number; thumbOffset: number } {
+  ): number {
     const scrollExtent = Math.max(this._contentSize, this._viewportSize);
     const maxScrollOffset = scrollExtent - this._viewportSize;
 
@@ -714,11 +701,6 @@ export class VirtualScroll {
 
     newScrollOffset = Math.max(0, Math.min(maxScrollOffset, newScrollOffset));
 
-    const thumbOffset =
-      maxScrollOffset > 0
-        ? (newScrollOffset / maxScrollOffset) * this.thumbTravelSize
-        : 0;
-
-    return { scrollOffset: newScrollOffset, thumbOffset };
+    return newScrollOffset;
   }
 }

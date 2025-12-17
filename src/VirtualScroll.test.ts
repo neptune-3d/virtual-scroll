@@ -639,15 +639,6 @@ describe("VirtualScroll.getVelocityPxValues (instance method)", () => {
     const result = (vs as any).getVelocityPxValues(50, 60);
     expect(result.scrollOffset).toBe(110);
     expect(result.velocity).toBeCloseTo(30);
-
-    const maxScrollOffset = vs.contentSize - vs.viewportSize; // 200
-    const thumbSize = (vs.viewportSize / vs.contentSize) * vs.trackSize;
-    const thumbTravel = vs.trackSize - thumbSize;
-    const expectedThumbOffset =
-      (result.scrollOffset / maxScrollOffset) * thumbTravel;
-
-    expect(result.thumbOffset).toBeCloseTo(expectedThumbOffset);
-    expect(result.thumbOffset).toBeGreaterThan(0);
   });
 
   it("clamps scrollOffset at 0 when velocity is negative", () => {
@@ -672,14 +663,6 @@ describe("VirtualScroll.getVelocityPxValues (instance method)", () => {
     const result = (vs as any).getVelocityPxValues(180, 50);
     expect(result.scrollOffset).toBe(200);
     expect(result.velocity).toBeCloseTo(35);
-
-    const maxScrollOffset = vs.contentSize - vs.viewportSize;
-    const thumbSize = (vs.viewportSize / vs.contentSize) * vs.trackSize;
-    const thumbTravel = vs.trackSize - thumbSize;
-    const expectedThumbOffset =
-      (result.scrollOffset / maxScrollOffset) * thumbTravel;
-
-    expect(result.thumbOffset).toBeCloseTo(expectedThumbOffset);
   });
 
   it("returns thumbOffset = 0 when content fits viewport", () => {
@@ -691,7 +674,6 @@ describe("VirtualScroll.getVelocityPxValues (instance method)", () => {
 
     const result = (vs as any).getVelocityPxValues(0, 50);
     expect(result.scrollOffset).toBe(0);
-    expect(result.thumbOffset).toBe(0);
   });
 
   it("applies custom inertiaDecay correctly", () => {
@@ -810,7 +792,6 @@ describe("VirtualScroll.getVelocityItemValues (instance method)", () => {
     // stepItems = round(2.4) = 2
     expect(result.scrollOffset).toBeGreaterThan(0);
     expect(result.velocity).toBeCloseTo(1.2); // 2.4 * 0.5
-    expect(result.thumbOffset).toBeGreaterThan(0);
   });
 
   it("moves scrollOffset backward when itemVelocity < 0", () => {
@@ -868,7 +849,6 @@ describe("VirtualScroll.getVelocityItemValues (instance method)", () => {
 
     const result = (vs as any).getVelocityItemValues(0, 2);
     expect(result.scrollOffset).toBe(0);
-    expect(result.thumbOffset).toBe(0);
   });
 
   it("applies custom inertiaDecay correctly", () => {
