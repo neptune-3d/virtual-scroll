@@ -33,7 +33,8 @@ track.style.position = "relative";
 const trackRect = track.getBoundingClientRect();
 
 track.addEventListener("click", (e) => {
-  scroll.handleTrackClick(e.clientY, trackRect.top); // updates scrollOffset
+  // updates scrollOffset and calls onScroll
+  scroll.handleTrackClick(e.clientY, trackRect.top); 
 });
 
 const thumb = document.createElement("div");
