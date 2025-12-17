@@ -12,7 +12,7 @@ npm install neptune3d/virtual-scroll
 
 ```ts
 const scroll = new VirtualScroll({
-  getViewportSize: () => 800,
+  getViewportSize: () => 800 // or something like scrollContainer.clientHeight,
   getContentSize: () => 1200,
   getTrackSize: () => 800,
   onScroll: () => {
