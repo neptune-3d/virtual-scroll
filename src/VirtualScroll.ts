@@ -398,76 +398,58 @@ export class VirtualScroll {
   }
 
   /**
-   * Determines the index that should receive focus on the next PageUp action,
-   * without mutating the current scroll state.
+   * Calculates the next PageUp focus index without mutating scroll state.
    *
-   * Behavior:
-   * - If the current focus is not yet at the first fully visible item,
-   *   the next focus target is simply that first fully visible item (no scroll).
-   * - If the current focus is already at the first fully visible item,
-   *   the method simulates a one‑page upward scroll and calculates which item
-   *   would become the new top fully visible item after that scroll.
-   *
-   * This mirrors the PageUp behavior in file explorers: the first press moves
-   * focus to the top visible item, and the next press scrolls one page up so
-   * that the old top becomes the new bottom.
+   * - If focus is not yet at the first fully visible item, return that top item (no scroll).
+   * - If focus is already at the first fully visible item, move one visible page up:
+   *   the old top fully visible item becomes the new bottom fully visible item.
    *
    * @param {number} currentFocusedIndex - The index of the currently focused item.
    * @returns {number} The index that should be focused after a PageUp action.
    */
   getNextPageUpIndex(currentFocusedIndex: number): number {
     const firstVisible = this.getFirstFullyVisibleIndex();
+    const lastVisible = this.getLastFullyVisibleIndex();
+    const visibleCount = Math.max(1, lastVisible - firstVisible + 1);
 
-    // Case 1: focus not yet at top → next target is top
+    // Case 1: focus not yet at the top → just jump to top, no scroll
     if (currentFocusedIndex > firstVisible) {
       return firstVisible;
     }
 
-    // Case 2: focus already at top → simulate scroll up
-    const newOffset = Math.max(this._scrollOffset - this.viewportSize, 0);
-    const viewportTop = newOffset;
-
-    // Compute new first fully visible item after the simulated scroll
-    const newFirstIndex = Math.ceil(viewportTop / this.itemSize);
-    return newFirstIndex;
+    // Case 2: focus is at the top → move one visible page up
+    // Ensure the old top becomes the new bottom
+    const target = Math.max(0, firstVisible - visibleCount + 1);
+    return target;
   }
 
   /**
-   * Determines the index that should receive focus on the next PageDown action,
-   * without mutating the current scroll state.
+   * Calculates the next PageDown focus index without mutating scroll state.
    *
-   * Behavior:
+   * Semantics:
    * - If the current focus is not yet at the last fully visible item,
-   *   the next focus target is simply that last fully visible item (no scroll).
+   *   return that bottom item (no scroll).
    * - If the current focus is already at the last fully visible item,
-   *   the method simulates a one‑page downward scroll and calculates which item
-   *   would become the new bottom fully visible item after that scroll.
-   *
-   * This mirrors the PageDown behavior in file explorers: the first press moves
-   * focus to the bottom visible item, and the next press scrolls one page down so
-   * that the old bottom becomes the new top.
+   *   move one visible page down:
+   *   the old bottom fully visible item becomes the new top fully visible item.
    *
    * @param {number} currentFocusedIndex - The index of the currently focused item.
    * @returns {number} The index that should be focused after a PageDown action.
    */
   getNextPageDownIndex(currentFocusedIndex: number): number {
+    const firstVisible = this.getFirstFullyVisibleIndex();
     const lastVisible = this.getLastFullyVisibleIndex();
+    const visibleCount = Math.max(1, lastVisible - firstVisible + 1);
 
-    // Case 1: focus not yet at bottom → next target is bottom
+    // Case 1: focus not yet at the bottom → just jump to bottom, no scroll
     if (currentFocusedIndex < lastVisible) {
       return lastVisible;
     }
 
-    // Case 2: focus already at bottom → simulate scroll
-    const newOffset = Math.min(
-      this._scrollOffset + this.viewportSize,
-      this.maxScrollOffset
-    );
-    const viewportBottom = newOffset + this.viewportSize;
-
-    // Compute new last fully visible item after the simulated scroll
-    const newLastIndex = Math.floor((viewportBottom - 1) / this.itemSize);
-    return newLastIndex;
+    // Case 2: focus is at the bottom → move one visible page down
+    // Ensure the old bottom becomes the new top
+    const target = Math.min(this.itemCount - 1, lastVisible + visibleCount - 1);
+    return target;
   }
 
   /**
