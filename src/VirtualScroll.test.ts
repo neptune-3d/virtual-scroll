@@ -1816,3 +1816,60 @@ describe("VirtualScroll.getNextPageDownTarget", () => {
     expect(target).toBe(19);
   });
 });
+
+describe("VirtualScroll.isItemVisible", () => {
+  const makeScroll = (
+    viewportSize: number,
+    contentSize: number,
+    itemSize: number
+  ) =>
+    new VirtualScroll({
+      getViewportSize: () => viewportSize,
+      getContentSize: () => contentSize,
+      getTrackSize: () => 100,
+      getItemSize: () => itemSize,
+      getItemCount: () => Math.floor(contentSize / itemSize),
+    });
+
+  it("returns true when item is fully visible at top of viewport", () => {
+    const vs = makeScroll(100, 1000, 20);
+    vs.scrollOffset = 0; // viewport covers items 0–4 fully
+    expect(vs.isItemVisible(0)).toBe(true);
+  });
+
+  it("returns false when item is only partially visible at top", () => {
+    const vs = makeScroll(100, 1000, 20);
+    vs.scrollOffset = 5; // item 0 partially visible
+    expect(vs.isItemVisible(0)).toBe(false);
+  });
+
+  it("returns true when item is fully visible in middle of viewport", () => {
+    const vs = makeScroll(100, 1000, 20);
+    vs.scrollOffset = 200; // viewport covers items 10–14
+    expect(vs.isItemVisible(12)).toBe(true);
+  });
+
+  it("returns false when item is partially visible at bottom", () => {
+    const vs = makeScroll(100, 1000, 20);
+    vs.scrollOffset = 15; // viewport covers 15–115, item 5 partially visible
+    expect(vs.isItemVisible(5)).toBe(false);
+  });
+
+  it("returns true for last item when fully visible at bottom", () => {
+    const vs = makeScroll(100, 200, 20); // 10 items
+    vs.scrollOffset = 100; // viewport covers items 5–9 fully
+    expect(vs.isItemVisible(9)).toBe(true);
+  });
+
+  it("returns false for last item when partially visible at bottom", () => {
+    const vs = makeScroll(100, 200, 20);
+    vs.scrollOffset = 95; // viewport covers 95–195, item 9 partially visible
+    expect(vs.isItemVisible(9)).toBe(false);
+  });
+
+  it("returns true for partially visible item when fully=false", () => {
+    const vs = makeScroll(100, 1000, 20);
+    vs.scrollOffset = 5; // item 0 partially visible
+    expect(vs.isItemVisible(0, false)).toBe(true);
+  });
+});

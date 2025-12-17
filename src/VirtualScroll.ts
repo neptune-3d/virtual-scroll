@@ -471,6 +471,36 @@ export class VirtualScroll {
   }
 
   /**
+   * Checks whether the item at the given index is visible in the current viewport.
+   *
+   * By default, this requires the item to be fully visible:
+   * - Its top edge must be at or below the viewport's top.
+   * - Its bottom edge must be at or above the viewport's bottom.
+   *
+   * If you want to allow partial visibility, pass `fully = false`.
+   *
+   * @param {number} itemIndex - The index of the item to check.
+   * @param {boolean} [fully=true] - Whether to require full visibility (default true).
+   * @returns {boolean} True if the item is visible according to the chosen mode.
+   */
+  isItemVisible(itemIndex: number, fully: boolean = true): boolean {
+    const rowTop = itemIndex * this.itemSize;
+    const rowBottom = rowTop + this.itemSize;
+    const viewportTop = this._scrollOffset;
+    const viewportBottom = viewportTop + this.viewportSize;
+
+    if (fully) {
+      // Fully visible: item entirely within viewport
+      return rowTop >= viewportTop && rowBottom <= viewportBottom;
+    }
+    //
+    else {
+      // Partially visible: any overlap with viewport
+      return rowBottom > viewportTop && rowTop < viewportBottom;
+    }
+  }
+
+  /**
    * Adjusts the current scroll offset by applying a delta value expressed in track space.
    *
    * This method is typically used to process user interactions such as drag gestures,
