@@ -346,8 +346,147 @@ export class VirtualScroll {
   }
 
   /**
-   * Applies a delta in track space to update scrollOffset.
-   * Useful for drag, wheel, or synthetic scroll updates.
+   * Computes the index of the first fully visible item in the current viewport.
+   *
+   * A fully visible item is one whose top edge is at or below the viewport's top
+   * and whose bottom edge is at or above the viewport's bottom.
+   *
+   * - If the item at the computed index is fully visible, that index is returned.
+   * - If the item is only partially visible, the next index is returned instead.
+   *
+   * @returns {number} The index of the first fully visible item.
+   */
+  getFirstFullyVisibleIndex(): number {
+    const viewportTop = this._scrollOffset;
+    const viewportBottom = viewportTop + this.viewportSize;
+
+    const firstIndex = Math.ceil(viewportTop / this.itemSize);
+    const rowTop = firstIndex * this.itemSize;
+    const rowBottom = rowTop + this.itemSize;
+
+    if (rowBottom <= viewportBottom) {
+      return firstIndex;
+    }
+    // If the computed index is only partially visible, move to the next one
+    return firstIndex + 1;
+  }
+
+  /**
+   * Computes the index of the last fully visible item in the current viewport.
+   *
+   * A fully visible item is one whose top edge is at or below the viewport's bottom
+   * and whose bottom edge is at or above the viewport's top.
+   *
+   * - If the item at the computed index is fully visible, that index is returned.
+   * - If the item is only partially visible, the previous index is returned instead.
+   *
+   * @returns {number} The index of the last fully visible item.
+   */
+  getLastFullyVisibleIndex(): number {
+    const viewportTop = this._scrollOffset;
+    const viewportBottom = viewportTop + this.viewportSize;
+
+    const lastIndex = Math.floor((viewportBottom - 1) / this.itemSize);
+    const rowTop = lastIndex * this.itemSize;
+    const rowBottom = rowTop + this.itemSize;
+
+    if (rowTop >= viewportTop && rowBottom <= viewportBottom) {
+      return lastIndex;
+    }
+    // If the computed index is only partially visible, move up one
+    return lastIndex - 1;
+  }
+
+  /**
+   * Determines the index that should receive focus on the next PageUp action,
+   * without mutating the current scroll state.
+   *
+   * Behavior:
+   * - If the current focus is not yet at the first fully visible item,
+   *   the next focus target is simply that first fully visible item (no scroll).
+   * - If the current focus is already at the first fully visible item,
+   *   the method simulates a one‑page upward scroll and calculates which item
+   *   would become the new top fully visible item after that scroll.
+   *
+   * This mirrors the PageUp behavior in file explorers: the first press moves
+   * focus to the top visible item, and the next press scrolls one page up so
+   * that the old top becomes the new bottom.
+   *
+   * @param {number} currentFocusedIndex - The index of the currently focused item.
+   * @returns {number} The index that should be focused after a PageUp action.
+   */
+  getNextPageUpIndex(currentFocusedIndex: number): number {
+    const firstVisible = this.getFirstFullyVisibleIndex();
+
+    // Case 1: focus not yet at top → next target is top
+    if (currentFocusedIndex > firstVisible) {
+      return firstVisible;
+    }
+
+    // Case 2: focus already at top → simulate scroll up
+    const newOffset = Math.max(this._scrollOffset - this.viewportSize, 0);
+    const viewportTop = newOffset;
+
+    // Compute new first fully visible item after the simulated scroll
+    const newFirstIndex = Math.ceil(viewportTop / this.itemSize);
+    return newFirstIndex;
+  }
+
+  /**
+   * Determines the index that should receive focus on the next PageDown action,
+   * without mutating the current scroll state.
+   *
+   * Behavior:
+   * - If the current focus is not yet at the last fully visible item,
+   *   the next focus target is simply that last fully visible item (no scroll).
+   * - If the current focus is already at the last fully visible item,
+   *   the method simulates a one‑page downward scroll and calculates which item
+   *   would become the new bottom fully visible item after that scroll.
+   *
+   * This mirrors the PageDown behavior in file explorers: the first press moves
+   * focus to the bottom visible item, and the next press scrolls one page down so
+   * that the old bottom becomes the new top.
+   *
+   * @param {number} currentFocusedIndex - The index of the currently focused item.
+   * @returns {number} The index that should be focused after a PageDown action.
+   */
+  getNextPageDownIndex(currentFocusedIndex: number): number {
+    const lastVisible = this.getLastFullyVisibleIndex();
+
+    // Case 1: focus not yet at bottom → next target is bottom
+    if (currentFocusedIndex < lastVisible) {
+      return lastVisible;
+    }
+
+    // Case 2: focus already at bottom → simulate scroll
+    const newOffset = Math.min(
+      this._scrollOffset + this.viewportSize,
+      this.maxScrollOffset
+    );
+    const viewportBottom = newOffset + this.viewportSize;
+
+    // Compute new last fully visible item after the simulated scroll
+    const newLastIndex = Math.floor((viewportBottom - 1) / this.itemSize);
+    return newLastIndex;
+  }
+
+  /**
+   * Adjusts the current scroll offset by applying a delta value expressed in track space.
+   *
+   * This method is typically used to process user interactions such as drag gestures,
+   * mouse wheel events, or synthetic scroll updates. The delta is converted from track
+   * coordinates into scroll offset units using `trackToScrollFactor`.
+   *
+   * Behavior:
+   * - If scrolling is not needed (`isScrollingNeeded` is false), the method exits without changes.
+   * - Otherwise, the new scroll offset is computed as:
+   *   `currentOffset + delta / trackToScrollFactor`.
+   * - The result is clamped between `0` and `maxScrollOffset` to ensure it stays within
+   *   valid bounds.
+   * - Finally, the scroll offset is updated via `setScrollOffset(newScrollOffset)`.
+   *
+   * @param {number} delta - The change in track space (e.g., pixels moved on the scrollbar track).
+   * @returns {void} Updates the internal scroll offset state.
    */
   handleDelta(delta: number): void {
     if (!this.isScrollingNeeded) {

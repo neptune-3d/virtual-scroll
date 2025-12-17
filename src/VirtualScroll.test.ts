@@ -1592,3 +1592,227 @@ describe("VirtualScroll.scrollItemIntoView", () => {
     expect(vs.scrollOffset).toBe(max);
   });
 });
+
+describe("VirtualScroll.getFirstFullyVisibleItem", () => {
+  const makeScroll = (
+    viewportSize: number,
+    contentSize: number,
+    itemSize: number
+  ) =>
+    new VirtualScroll({
+      getViewportSize: () => viewportSize,
+      getContentSize: () => contentSize,
+      getTrackSize: () => 100,
+      getItemSize: () => itemSize,
+      getItemCount: () => Math.floor(contentSize / itemSize),
+    });
+
+  it("returns 0 when viewport starts at top and first item fully visible", () => {
+    const vs = makeScroll(100, 1000, 20);
+    vs.scrollOffset = 0;
+    expect(vs.getFirstFullyVisibleIndex()).toBe(0);
+  });
+
+  it("returns next index when first item is only partially visible", () => {
+    const vs = makeScroll(100, 1000, 20);
+    vs.scrollOffset = 5; // item 0 partially visible
+    expect(vs.getFirstFullyVisibleIndex()).toBe(1);
+  });
+
+  it("returns correct index when scrolled to exact item boundary", () => {
+    const vs = makeScroll(100, 1000, 20);
+    vs.scrollOffset = 40; // item 2 starts exactly at viewport top
+    expect(vs.getFirstFullyVisibleIndex()).toBe(2);
+  });
+
+  it("returns next index when item at boundary is partially visible", () => {
+    const vs = makeScroll(100, 1000, 20);
+    vs.scrollOffset = 41; // item 2 partially visible
+    expect(vs.getFirstFullyVisibleIndex()).toBe(3);
+  });
+
+  it("handles case near bottom of content", () => {
+    const vs = makeScroll(100, 200, 20); // 10 items
+    vs.scrollOffset = 100; // viewport covers items 5–9
+    expect(vs.getFirstFullyVisibleIndex()).toBe(5);
+  });
+
+  it("returns last item index when only last item fits fully", () => {
+    const vs = makeScroll(100, 200, 20);
+    vs.scrollOffset = 180; // viewport covers partially item 9
+    expect(vs.getFirstFullyVisibleIndex()).toBe(9);
+  });
+});
+
+describe("VirtualScroll.getLastFullyVisibleItem", () => {
+  const makeScroll = (
+    viewportSize: number,
+    contentSize: number,
+    itemSize: number
+  ) =>
+    new VirtualScroll({
+      getViewportSize: () => viewportSize,
+      getContentSize: () => contentSize,
+      getTrackSize: () => 100,
+      getItemSize: () => itemSize,
+      getItemCount: () => Math.floor(contentSize / itemSize),
+    });
+
+  it("returns last index when viewport ends exactly at item boundary", () => {
+    const vs = makeScroll(100, 1000, 20);
+    vs.scrollOffset = 0; // viewport covers items 0–4 fully
+    expect(vs.getLastFullyVisibleIndex()).toBe(4);
+  });
+
+  it("returns previous index when last item is only partially visible", () => {
+    const vs = makeScroll(100, 1000, 20);
+    vs.scrollOffset = 15; // viewport covers 15–115, item 5 partially visible
+    expect(vs.getLastFullyVisibleIndex()).toBe(4);
+  });
+
+  it("returns correct index when scrolled mid‑content", () => {
+    const vs = makeScroll(100, 1000, 20);
+    vs.scrollOffset = 200; // viewport covers 200–300, items 10–14 fully visible
+    expect(vs.getLastFullyVisibleIndex()).toBe(14);
+  });
+
+  it("returns previous index when bottom item is partially visible at boundary", () => {
+    const vs = makeScroll(100, 1000, 20);
+    vs.scrollOffset = 201; // viewport covers 201–301, item 15 partially visible
+    expect(vs.getLastFullyVisibleIndex()).toBe(14);
+  });
+
+  it("handles case near bottom of content", () => {
+    const vs = makeScroll(100, 200, 20); // 10 items
+    vs.scrollOffset = 100; // viewport covers items 5–9 fully
+    expect(vs.getLastFullyVisibleIndex()).toBe(9);
+  });
+
+  it("returns last fully visible item when final item is partially visible", () => {
+    const vs = makeScroll(100, 200, 20); // 10 items, maxScrollOffset = 100
+    vs.scrollOffset = 95; // viewport covers 95–195 → item 9 (180–200) partially visible
+    expect(vs.getLastFullyVisibleIndex()).toBe(8);
+  });
+
+  it("returns previous index when final item is partially visible at maxScrollOffset", () => {
+    const vs = makeScroll(100, 195, 20); // 9 full items + last partially visible
+    vs.scrollOffset = vs.maxScrollOffset; // 95
+    // viewport 95–195, last item top=180, bottom=200 → partially visible
+    expect(vs.getLastFullyVisibleIndex()).toBe(8);
+  });
+});
+
+describe("VirtualScroll.getNextPageUpTarget", () => {
+  const makeScroll = (
+    viewportSize: number,
+    contentSize: number,
+    itemSize: number
+  ) =>
+    new VirtualScroll({
+      getViewportSize: () => viewportSize,
+      getContentSize: () => contentSize,
+      getTrackSize: () => 100,
+      getItemSize: () => itemSize,
+      getItemCount: () => Math.floor(contentSize / itemSize),
+    });
+
+  it("returns the first fully visible item when focus is not yet at top", () => {
+    const vs = makeScroll(100, 1000, 20);
+    vs.scrollOffset = 200; // viewport covers items 10–14
+    const firstVisible = vs.getFirstFullyVisibleIndex(); // should be 10
+    const target = vs.getNextPageUpIndex(12); // focus is below top
+    expect(target).toBe(firstVisible);
+  });
+
+  it("simulates scroll up when focus is already at top", () => {
+    const vs = makeScroll(100, 1000, 20);
+    vs.scrollOffset = 200; // viewport covers items 10–14
+    const firstVisible = vs.getFirstFullyVisibleIndex(); // 10
+    const target = vs.getNextPageUpIndex(firstVisible); // focus at top
+    // simulate scroll up: newOffset = 100 → viewport covers items 5–9 → newFirstIndex = 5
+    expect(target).toBe(5);
+  });
+
+  it("clamps simulated scroll offset to 0 when already at very top", () => {
+    const vs = makeScroll(100, 1000, 20);
+    vs.scrollOffset = 0; // viewport covers items 0–4
+    const firstVisible = vs.getFirstFullyVisibleIndex(); // 0
+    const target = vs.getNextPageUpIndex(firstVisible); // focus at top
+    expect(target).toBe(0); // cannot scroll further up
+  });
+
+  it("returns correct target when partially visible item at top", () => {
+    const vs = makeScroll(100, 1000, 20);
+    vs.scrollOffset = 15; // item 0 partially visible, item 1 fully visible
+    const firstVisible = vs.getFirstFullyVisibleIndex(); // 1
+    const target = vs.getNextPageUpIndex(3); // focus below top
+    expect(target).toBe(firstVisible);
+  });
+
+  it("handles case near bottom of content correctly", () => {
+    const vs = makeScroll(100, 200, 20); // 10 items
+    vs.scrollOffset = 100; // viewport covers items 5–9
+    const firstVisible = vs.getFirstFullyVisibleIndex(); // 5
+    const target = vs.getNextPageUpIndex(firstVisible); // focus at top
+    // simulate scroll up: newOffset = 0 → viewport covers items 0–4 → newFirstIndex = 0
+    expect(target).toBe(0);
+  });
+});
+
+describe("VirtualScroll.getNextPageDownTarget", () => {
+  const makeScroll = (
+    viewportSize: number,
+    contentSize: number,
+    itemSize: number
+  ) =>
+    new VirtualScroll({
+      getViewportSize: () => viewportSize,
+      getContentSize: () => contentSize,
+      getTrackSize: () => 100,
+      getItemSize: () => itemSize,
+      getItemCount: () => Math.floor(contentSize / itemSize),
+    });
+
+  it("returns the last fully visible item when focus is not yet at bottom", () => {
+    const vs = makeScroll(100, 1000, 20);
+    vs.scrollOffset = 0; // viewport covers items 0–4 fully
+    const lastVisible = vs.getLastFullyVisibleIndex(); // 4
+    const target = vs.getNextPageDownIndex(2); // focus above bottom
+    expect(target).toBe(lastVisible);
+  });
+
+  it("simulates scroll down when focus is already at bottom", () => {
+    const vs = makeScroll(100, 1000, 20);
+    vs.scrollOffset = 0; // viewport covers items 0–4
+    const lastVisible = vs.getLastFullyVisibleIndex(); // 4
+    const target = vs.getNextPageDownIndex(lastVisible); // focus at bottom
+    // simulate scroll down: newOffset = 100 → viewport covers items 5–9 → newLastIndex = 9
+    expect(target).toBe(9);
+  });
+
+  it("clamps simulated scroll offset to maxScrollOffset at end of content", () => {
+    const vs = makeScroll(100, 200, 20); // 10 items, maxScrollOffset = 100
+    vs.scrollOffset = vs.maxScrollOffset; // viewport covers items 5–9
+    const lastVisible = vs.getLastFullyVisibleIndex(); // 9
+    const target = vs.getNextPageDownIndex(lastVisible); // focus at bottom
+    // cannot scroll further down, so target stays at last item
+    expect(target).toBe(9);
+  });
+
+  it("returns correct target when bottom item is partially visible", () => {
+    const vs = makeScroll(100, 1000, 20);
+    vs.scrollOffset = 15; // viewport covers 15–115, item 5 partially visible
+    const lastVisible = vs.getLastFullyVisibleIndex(); // 4
+    const target = vs.getNextPageDownIndex(2); // focus above bottom
+    expect(target).toBe(lastVisible);
+  });
+
+  it("handles mid‑content scroll correctly", () => {
+    const vs = makeScroll(100, 1000, 20);
+    vs.scrollOffset = 200; // viewport covers items 10–14
+    const lastVisible = vs.getLastFullyVisibleIndex(); // 14
+    const target = vs.getNextPageDownIndex(lastVisible); // focus at bottom
+    // simulate scroll down: newOffset = 300 → viewport covers items 15–19 → newLastIndex = 19
+    expect(target).toBe(19);
+  });
+});
