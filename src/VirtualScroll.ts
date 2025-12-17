@@ -1,3 +1,5 @@
+import type { VirtualScrollProps } from "./types";
+
 /**
  * VirtualScroll
  *
@@ -21,44 +23,38 @@
  * This class is axis-agnostic: all methods work for both vertical (Y/height) and
  * horizontal (X/width) scrolling, depending on which dimension you configure.
  */
-
 export class VirtualScroll {
   /**
    * Creates a new VirtualScroll instance.
    *
-   * @param onScroll - Optional callback invoked only when actual scrolling occurs.
-   *                   This is triggered by user-driven scroll actions:
-   *                   - `handleDelta`
-   *                   - `handleTrackClick`
-   *                   - `handleWheelPx`
-   *                   - `handleWheelItems`
-   *                   - `handlePageScroll`
+   * @param props - Object containing measurement callbacks and optional scroll callback.
    *
-   *                   It is **not** called during measurement changes (e.g. resize,
-   *                   viewport/content/track setters). The host application can use
-   *                   this callback to update its UI (e.g., reposition a thumb,
-   *                   redraw visible items) whenever the scrollOffset changes due
-   *                   to a scroll action.
-   *
-   * @param itemSize - The fixed size of each scrollable item in pixels (or logical units).
-   *                   Defaults to `1`. This value is used to calculate scroll offsets,
-   *                   velocity steps, and snapping behavior.
-   *
-   * The constructor initializes the scroll model with the given item size and registers
-   * an optional scroll callback.
+   * The measurement callbacks (`getViewportSize`, `getContentSize`, `getTrackSize`)
+   * are invoked whenever VirtualScroll needs fresh values. The optional `onScroll`
+   * is triggered only when actual scrolling occurs due to user-driven actions.
    */
-  constructor(onScroll?: () => void, itemSize: number = 1) {
-    this._itemSize = itemSize;
-    this._onScroll = onScroll;
+  constructor(props: VirtualScrollProps) {
+    this._getViewportSize = props.getViewportSize;
+    this._getContentSize = props.getContentSize;
+    this._getTrackSize = props.getTrackSize;
+    this._onScroll = props.onScroll;
+    this._getItemSize = props.getItemSize;
+    this._getItemCount = props.getItemCount;
+
+    this._minThumbSize = props.minThumbSize ?? 12;
+    this._minVelocityPxStep = props.minVelocityPxStep ?? 10;
+    this._maxVelocityPxStep = props.maxVelocityPxStep ?? 60;
+    this._minVelocityItemStep = props.minVelocityItemStep ?? 1;
+    this._maxVelocityItemStep = props.maxVelocityItemStep ?? 3;
+    this._inertiaDecay = props.inertiaDecay ?? 0.7;
   }
 
-  protected _viewportSize: number = 0;
-  protected _contentSize: number = 0;
-  protected _trackSize: number = 0;
-  protected _scrollOffset: number = 0;
-  protected _itemSize: number;
-  protected _itemCount: number = 0;
-  protected _onScroll?: () => void;
+  protected _getViewportSize;
+  protected _getContentSize;
+  protected _getTrackSize;
+  protected _getItemSize;
+  protected _getItemCount;
+  protected _onScroll;
 
   protected _minThumbSize: number = 12;
   protected _minVelocityPxStep = 10;
@@ -67,62 +63,52 @@ export class VirtualScroll {
   protected _maxVelocityItemStep = 3;
   protected _inertiaDecay: number = 0.7;
 
+  // state
+
+  protected _scrollOffset: number = 0;
+
   protected _pxVelocity: number = 0;
   protected _itemVelocity: number = 0;
+
   protected _wheelAnimationFrame: number | null = null;
 
   /** Visible size of the scroll viewport (height or width in px). */
   get viewportSize(): number {
-    return this._viewportSize;
-  }
-
-  /**
-   * Sets the visible size of the scroll viewport.
-   *
-   * ⚠️ Side effect: This will trigger a reconciliation of scroll state
-   * using the previous scrollProgressRatio. The scrollOffset will be
-   * adjusted to preserve the old ratio relative to the new maxScrollOffset
-   */
-  set viewportSize(value: number) {
-    const oldRatio = this.scrollRatio;
-    this._viewportSize = value;
-    this.updateMeasurements(oldRatio);
+    return this._getViewportSize();
   }
 
   /** Total size of the scrollable content (height or width in px). */
   get contentSize(): number {
-    return this._contentSize;
-  }
-
-  /**
-   * Sets the total size of the scrollable content.
-   *
-   * ⚠️ Side effect: This will trigger a reconciliation of scroll state
-   * using the previous scrollProgressRatio. The scrollOffset will be
-   * adjusted to preserve the old ratio relative to the new maxScrollOffset.
-   */
-  set contentSize(value: number) {
-    const oldRatio = this.scrollRatio;
-    this._contentSize = value;
-    this.updateMeasurements(oldRatio);
+    return this._getContentSize();
   }
 
   /** Pixel size of the scrollbar track (height or width). */
   get trackSize(): number {
-    return this._trackSize;
+    return this._getTrackSize();
   }
 
-  set trackSize(value: number) {
-    this._trackSize = value;
+  /**
+   * Fixed size of each scrollable item.
+   *
+   * If a `getItemSize` callback was provided via props, its return value
+   * is used. Otherwise, this falls back to a default of `1`.
+   * This ensures VirtualScroll always has a valid item size even if
+   * the host does not supply a measurement callback.
+   */
+  get itemSize(): number {
+    return this._getItemSize?.() ?? 1;
   }
 
-  /** Current scroll offset in px (scrollTop/scrollLeft). */
-  get scrollOffset(): number {
-    return this._scrollOffset;
-  }
-
-  set scrollOffset(value: number) {
-    this._scrollOffset = value;
+  /**
+   * Total number of scrollable items.
+   *
+   * If a `getItemCount` callback was provided via props, its return value
+   * is used. Otherwise, this falls back to a default of `0`.
+   * This ensures VirtualScroll can operate safely even when the host
+   * does not supply an item count callback.
+   */
+  get itemCount(): number {
+    return this._getItemCount?.() ?? 0;
   }
 
   /** Minimum allowed thumb size in px for accessibility. */
@@ -132,38 +118,6 @@ export class VirtualScroll {
 
   set minThumbSize(value: number) {
     this._minThumbSize = value;
-  }
-
-  /**
-   * Size of one item in px (row height or column width).
-   *
-   * Note: This value is not used in measurement reconciliation
-   * (viewport/content sizes). It is consumed by the
-   * item-velocity scrolling logic to determine how far to
-   * advance when applying wheel/item-based inertia.
-   */
-  get itemSize(): number {
-    return this._itemSize;
-  }
-
-  set itemSize(value: number) {
-    this._itemSize = value;
-  }
-
-  /**
-   * Total number of items in the scrollable content.
-   *
-   * Note: This count is not part of the measurement setters
-   * that trigger scrollOffset reconciliation. It is used by
-   * item-velocity scrolling to calculate how many discrete
-   * steps are available when applying momentum or snapping.
-   */
-  get itemCount(): number {
-    return this._itemCount;
-  }
-
-  set itemCount(value: number) {
-    this._itemCount = value;
   }
 
   /**
@@ -246,21 +200,21 @@ export class VirtualScroll {
    * Otherwise equals contentSize.
    */
   get scrollSize(): number {
-    return Math.max(this._contentSize, this._viewportSize);
+    return Math.max(this.contentSize, this.viewportSize);
   }
 
   /**
    * Maximum scroll offset (distance you can scroll).
    */
   get maxScrollOffset(): number {
-    return Math.max(0, this._contentSize - this._viewportSize);
+    return Math.max(0, this.contentSize - this.viewportSize);
   }
 
   /**
    * True if the content overflows and a scrollbar is needed, false otherwise.
    */
   get isScrollingNeeded(): boolean {
-    return this._contentSize > this._viewportSize;
+    return this.contentSize > this.viewportSize;
   }
 
   /**
@@ -270,6 +224,15 @@ export class VirtualScroll {
   get scrollRatio(): number {
     if (!this.isScrollingNeeded) return 0;
     return this._scrollOffset / this.maxScrollOffset;
+  }
+
+  /** Current scroll offset in px (scrollTop/scrollLeft). */
+  get scrollOffset(): number {
+    return this._scrollOffset;
+  }
+
+  set scrollOffset(value: number) {
+    this._scrollOffset = value;
   }
 
   /**
@@ -295,9 +258,9 @@ export class VirtualScroll {
 
   /** Scrollbar thumb size in pixels. Returns 0 if contentSize <= 0 or trackSize === 0. */
   get thumbSize(): number {
-    if (this._contentSize <= 0 || this._trackSize === 0) return 0;
+    if (this.contentSize <= 0 || this.trackSize === 0) return 0;
     const rawSize =
-      Math.min(1, this._viewportSize / this._contentSize) * this._trackSize;
+      Math.min(1, this.viewportSize / this.contentSize) * this.trackSize;
     return Math.max(rawSize, this._minThumbSize);
   }
 
@@ -305,7 +268,7 @@ export class VirtualScroll {
    * Maximum distance the thumb can travel along the track (trackSize − thumbSize).
    */
   get thumbTravelSize(): number {
-    return Math.max(0, this._trackSize - this.thumbSize);
+    return Math.max(0, this.trackSize - this.thumbSize);
   }
 
   /**
@@ -399,9 +362,7 @@ export class VirtualScroll {
       )
     );
 
-    this._scrollOffset = newScrollOffset;
-
-    this._onScroll?.();
+    this.setScrollOffset(newScrollOffset);
   }
 
   /**
@@ -429,12 +390,11 @@ export class VirtualScroll {
     );
 
     // Map clamped thumb offset back to scrollOffset
-    this._scrollOffset =
+    this.setScrollOffset(
       this.thumbTravelSize > 0
         ? (clampedThumbOffset / this.thumbTravelSize) * this.maxScrollOffset
-        : 0;
-
-    this._onScroll?.();
+        : 0
+    );
   }
 
   /**
@@ -453,28 +413,34 @@ export class VirtualScroll {
       direction
     );
 
-    this._scrollOffset = scrollOffset;
-
-    this._onScroll?.();
+    this.setScrollOffset(scrollOffset);
   }
 
   /**
    * Ensures the given row index is visible in the viewport,
    * with alignment options similar to native scrollIntoView.
    *
+   * Alignment modes:
+   * - "start"   → Scrolls so the item’s top edge aligns with the top of the viewport.
+   * - "end"     → Scrolls so the item’s bottom edge aligns with the bottom of the viewport.
+   * - "center"  → Scrolls so the item is centered vertically within the viewport.
+   * - "nearest" → Scrolls the shortest distance needed to bring the item fully into view.
+   *               If the item is already visible, no scrolling occurs. If it’s above the
+   *               viewport, it snaps up; if below, it snaps down.
+   *
    * @param itemIndex - The index of the row to bring into view.
-   * @param align - Alignment mode: "nearest" | "start" | "end" | "center".
+   * @param align - Alignment mode (default: "start").
    */
-  scrollIntoView(
+  scrollItemIntoView(
     itemIndex: number,
-    align: "nearest" | "start" | "end" | "center" = "nearest"
+    align: "nearest" | "start" | "end" | "center" = "start"
   ): void {
     if (!this.isScrollingNeeded) return;
 
-    const rowTop = itemIndex * this._itemSize;
-    const rowBottom = rowTop + this._itemSize;
+    const rowTop = itemIndex * this.itemSize;
+    const rowBottom = rowTop + this.itemSize;
     const viewportTop = this._scrollOffset;
-    const viewportBottom = viewportTop + this._viewportSize;
+    const viewportBottom = viewportTop + this.viewportSize;
 
     let newOffset = this._scrollOffset;
 
@@ -483,10 +449,10 @@ export class VirtualScroll {
         newOffset = rowTop;
         break;
       case "end":
-        newOffset = rowBottom - this._viewportSize;
+        newOffset = rowBottom - this.viewportSize;
         break;
       case "center":
-        newOffset = rowTop - (this._viewportSize - this._itemSize) / 2;
+        newOffset = rowTop - (this.viewportSize - this.itemSize) / 2;
         break;
       case "nearest":
       default:
@@ -497,7 +463,7 @@ export class VirtualScroll {
         //
         else if (rowBottom > viewportBottom) {
           // snap down
-          newOffset = rowBottom - this._viewportSize;
+          newOffset = rowBottom - this.viewportSize;
         }
         break;
     }
@@ -505,10 +471,7 @@ export class VirtualScroll {
     // Clamp to valid range
     newOffset = Math.max(0, Math.min(newOffset, this.maxScrollOffset));
 
-    if (newOffset !== this._scrollOffset) {
-      this._scrollOffset = newOffset;
-      this._onScroll?.();
-    }
+    this.setScrollOffset(newOffset);
   }
 
   /**
@@ -580,6 +543,13 @@ export class VirtualScroll {
     this._itemVelocity = 0;
   }
 
+  protected setScrollOffset(newScrollOffset: number) {
+    if (newScrollOffset !== this._scrollOffset) {
+      this._scrollOffset = newScrollOffset;
+      this._onScroll?.();
+    }
+  }
+
   protected updateMeasurements(oldRatio: number): void {
     if (!this.isScrollingNeeded) {
       this._scrollOffset = 0;
@@ -616,7 +586,6 @@ export class VirtualScroll {
       }
 
       const values = getValues(this._scrollOffset, currentVelocity);
-      this._scrollOffset = values.scrollOffset;
 
       if (velocityRef === "px") {
         this._pxVelocity = values.velocity;
@@ -626,7 +595,8 @@ export class VirtualScroll {
         this._itemVelocity = values.velocity;
       }
 
-      this._onScroll?.();
+      this.setScrollOffset(values.scrollOffset);
+
       this._wheelAnimationFrame = requestAnimationFrame(step);
     };
 
@@ -638,11 +608,11 @@ export class VirtualScroll {
 
   protected getWheelPxDelta(delta: number, deltaMode: number): number {
     if (deltaMode === 1) {
-      return delta * this._itemSize; // line units → px
+      return delta * this.itemSize; // line units → px
     }
     //
     else if (deltaMode === 2) {
-      return delta * this._viewportSize; // page units → px
+      return delta * this.viewportSize; // page units → px
     }
     return delta; // pixel mode
   }
@@ -663,8 +633,8 @@ export class VirtualScroll {
     scrollOffset: number,
     velocityPx: number
   ): { scrollOffset: number; velocity: number } => {
-    const scrollExtent = Math.max(this._contentSize, this._viewportSize);
-    const maxScrollOffset = scrollExtent - this._viewportSize;
+    const scrollExtent = Math.max(this.contentSize, this.viewportSize);
+    const maxScrollOffset = scrollExtent - this.viewportSize;
 
     let newScrollOffset = scrollOffset + velocityPx;
     newScrollOffset = Math.max(0, Math.min(maxScrollOffset, newScrollOffset));
@@ -683,7 +653,7 @@ export class VirtualScroll {
     }
     //
     else if (deltaMode === 2) {
-      return delta * (this._viewportSize / this._itemSize); // page units → items
+      return delta * (this.viewportSize / this.itemSize); // page units → items
     }
     return Math.sign(delta); // pixel mode → ±1 item
   }
@@ -703,35 +673,33 @@ export class VirtualScroll {
     scrollOffset: number,
     itemVelocity: number
   ): { scrollOffset: number; velocity: number } => {
-    const scrollExtent = Math.max(this._contentSize, this._viewportSize);
-    const remainder = this._viewportSize % this._itemSize;
-    const downOffset = remainder === 0 ? 0 : this._itemSize - remainder;
+    const scrollExtent = Math.max(this.contentSize, this.viewportSize);
+    const remainder = this.viewportSize % this.itemSize;
+    const downOffset = remainder === 0 ? 0 : this.itemSize - remainder;
 
     let stepItems = Math.round(itemVelocity);
     const nextVelocity = itemVelocity * this._inertiaDecay;
     let newScrollOffset = scrollOffset;
 
     if (stepItems > 0) {
-      const baseIndex = Math.floor(
-        (scrollOffset - downOffset) / this._itemSize
-      );
+      const baseIndex = Math.floor((scrollOffset - downOffset) / this.itemSize);
       let newIndex = Math.floor(baseIndex + stepItems);
-      const visibleItemsFloat = this._viewportSize / this._itemSize;
-      const maxIndex = this._itemCount - Math.ceil(visibleItemsFloat);
+      const visibleItemsFloat = this.viewportSize / this.itemSize;
+      const maxIndex = this.itemCount - Math.ceil(visibleItemsFloat);
       newIndex = Math.max(0, Math.min(maxIndex, newIndex));
-      newScrollOffset = newIndex * this._itemSize + downOffset;
+      newScrollOffset = newIndex * this.itemSize + downOffset;
     }
     //
     else if (stepItems < 0) {
-      const baseIndex = Math.ceil(scrollOffset / this._itemSize);
+      const baseIndex = Math.ceil(scrollOffset / this.itemSize);
       let newIndex = Math.ceil(baseIndex + stepItems);
-      const visibleItemsFloat = this._viewportSize / this._itemSize;
-      const maxIndex = this._itemCount - Math.ceil(visibleItemsFloat);
+      const visibleItemsFloat = this.viewportSize / this.itemSize;
+      const maxIndex = this.itemCount - Math.ceil(visibleItemsFloat);
       newIndex = Math.max(0, Math.min(maxIndex, newIndex));
-      newScrollOffset = newIndex * this._itemSize;
+      newScrollOffset = newIndex * this.itemSize;
     }
 
-    const maxScrollOffset = scrollExtent - this._viewportSize;
+    const maxScrollOffset = scrollExtent - this.viewportSize;
     newScrollOffset = Math.max(0, Math.min(maxScrollOffset, newScrollOffset));
 
     return {
@@ -744,18 +712,16 @@ export class VirtualScroll {
     scrollOffset: number,
     direction: "up" | "down"
   ): number {
-    const scrollExtent = Math.max(this._contentSize, this._viewportSize);
-    const maxScrollOffset = scrollExtent - this._viewportSize;
+    const scrollExtent = Math.max(this.contentSize, this.viewportSize);
+    const maxScrollOffset = scrollExtent - this.viewportSize;
 
     let newScrollOffset =
       direction === "down"
-        ? scrollOffset + this._viewportSize
-        : scrollOffset - this._viewportSize;
+        ? scrollOffset + this.viewportSize
+        : scrollOffset - this.viewportSize;
 
     newScrollOffset = Math.max(0, Math.min(maxScrollOffset, newScrollOffset));
 
     return newScrollOffset;
   }
 }
-
-// TODO: callbacks for measurements and item height ( also potentially allow variable item sizes per index )
