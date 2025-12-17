@@ -459,6 +459,59 @@ export class VirtualScroll {
   }
 
   /**
+   * Ensures the given row index is visible in the viewport,
+   * with alignment options similar to native scrollIntoView.
+   *
+   * @param itemIndex - The index of the row to bring into view.
+   * @param align - Alignment mode: "nearest" | "start" | "end" | "center".
+   */
+  scrollIntoView(
+    itemIndex: number,
+    align: "nearest" | "start" | "end" | "center" = "nearest"
+  ): void {
+    if (!this.isScrollingNeeded) return;
+
+    const rowTop = itemIndex * this._itemSize;
+    const rowBottom = rowTop + this._itemSize;
+    const viewportTop = this._scrollOffset;
+    const viewportBottom = viewportTop + this._viewportSize;
+
+    let newOffset = this._scrollOffset;
+
+    switch (align) {
+      case "start":
+        newOffset = rowTop;
+        break;
+      case "end":
+        newOffset = rowBottom - this._viewportSize;
+        break;
+      case "center":
+        newOffset = rowTop - (this._viewportSize - this._itemSize) / 2;
+        break;
+      case "nearest":
+      default:
+        if (rowTop < viewportTop) {
+          // snap up
+          newOffset = rowTop;
+        }
+        //
+        else if (rowBottom > viewportBottom) {
+          // snap down
+          newOffset = rowBottom - this._viewportSize;
+        }
+        break;
+    }
+
+    // Clamp to valid range
+    newOffset = Math.max(0, Math.min(newOffset, this.maxScrollOffset));
+
+    if (newOffset !== this._scrollOffset) {
+      this._scrollOffset = newOffset;
+      this._onScroll?.();
+    }
+  }
+
+  /**
    * Handle a wheel delta and feed it into the inertia system.
    *
    * @param deltaY - The wheel delta along the scroll axis.
@@ -704,3 +757,5 @@ export class VirtualScroll {
     return newScrollOffset;
   }
 }
+
+// TODO: callbacks for measurements and item height ( also potentially allow variable item sizes per index )
