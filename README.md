@@ -29,7 +29,8 @@ track.style.height = 800;
 track.style.position = "relative";
 // other track styles
 
-const trackRect = track.getBoundingClientRect(); // or even better if you can calculate it without reading from the DOM
+// or even better if you can calculate this without reading from the DOM
+const trackRect = track.getBoundingClientRect();
 
 track.addEventListener("click", (e) => {
   scroll.handleTrackClick(e.clientY, trackRect.top); // updates scrollOffset
