@@ -346,55 +346,44 @@ export class VirtualScroll {
   }
 
   /**
-   * Computes the index of the first fully visible item in the current viewport.
+   * Computes the index of the first visible item in the current viewport.
    *
-   * A fully visible item is one whose top edge is at or below the viewport's top
-   * and whose bottom edge is at or above the viewport's bottom.
-   *
-   * - If the item at the computed index is fully visible, that index is returned.
-   * - If the item is only partially visible, the next index is returned instead.
-   *
-   * @returns {number} The index of the first fully visible item.
+   * @param {boolean} [fully=true] - Whether to require full visibility.
+   * @returns {number} The index of the first visible item, clamped to valid range.
    */
-  getFirstFullyVisibleIndex(): number {
+  getFirstVisibleIndex(fully: boolean = true): number {
     const viewportTop = this._scrollOffset;
-    const viewportBottom = viewportTop + this.viewportSize;
 
-    const firstIndex = Math.ceil(viewportTop / this.itemSize);
-    const rowTop = firstIndex * this.itemSize;
-    const rowBottom = rowTop + this.itemSize;
+    let index = fully
+      ? Math.ceil(viewportTop / this.itemSize) // fully visible
+      : Math.floor(viewportTop / this.itemSize); // partial overlap
 
-    if (rowBottom <= viewportBottom) {
-      return firstIndex;
-    }
-    // If the computed index is only partially visible, move to the next one
-    return firstIndex + 1;
+    index = Math.min(index, this.itemCount - 1);
+    return Math.max(0, index);
   }
 
   /**
-   * Computes the index of the last fully visible item in the current viewport.
+   * Computes the index of the last visible item in the current viewport.
    *
-   * A fully visible item is one whose top edge is at or below the viewport's bottom
-   * and whose bottom edge is at or above the viewport's top.
-   *
-   * - If the item at the computed index is fully visible, that index is returned.
-   * - If the item is only partially visible, the previous index is returned instead.
-   *
-   * @returns {number} The index of the last fully visible item.
+   * @param {boolean} [fully=true] - Whether to require full visibility.
+   * @returns {number} The index of the last visible item, clamped to valid range.
    */
-  getLastFullyVisibleIndex(): number {
-    const viewportTop = this._scrollOffset;
+  getLastVisibleIndex(fully: boolean = true): number {
+    const viewportTop = Math.min(this._scrollOffset, this.maxScrollOffset);
     const viewportBottom = viewportTop + this.viewportSize;
 
-    const lastIndex = Math.floor((viewportBottom - 1) / this.itemSize);
-    const rowTop = lastIndex * this.itemSize;
-    const rowBottom = rowTop + this.itemSize;
+    let index = Math.floor((viewportBottom - 1) / this.itemSize);
+    index = Math.min(index, this.itemCount - 1);
 
-    if (rowTop >= viewportTop && rowBottom <= viewportBottom) {
-      return lastIndex;
+    if (fully) {
+      const rowTop = index * this.itemSize;
+      const rowBottom = rowTop + this.itemSize;
+      if (!(rowTop >= viewportTop && rowBottom <= viewportBottom)) {
+        index = Math.max(0, index - 1);
+      }
     }
-    // If the computed index is only partially visible, move up one
-    return lastIndex - 1;
+
+    return index;
   }
 
   /**
@@ -408,8 +397,8 @@ export class VirtualScroll {
    * @returns {number} The index that should be focused after a PageUp action.
    */
   getNextPageUpIndex(currentFocusedIndex: number): number {
-    const firstVisible = this.getFirstFullyVisibleIndex();
-    const lastVisible = this.getLastFullyVisibleIndex();
+    const firstVisible = this.getFirstVisibleIndex();
+    const lastVisible = this.getLastVisibleIndex();
     const visibleCount = Math.max(1, lastVisible - firstVisible + 1);
 
     // Case 1: focus not yet at the top → just jump to top, no scroll
@@ -437,8 +426,8 @@ export class VirtualScroll {
    * @returns {number} The index that should be focused after a PageDown action.
    */
   getNextPageDownIndex(currentFocusedIndex: number): number {
-    const firstVisible = this.getFirstFullyVisibleIndex();
-    const lastVisible = this.getLastFullyVisibleIndex();
+    const firstVisible = this.getFirstVisibleIndex();
+    const lastVisible = this.getLastVisibleIndex();
     const visibleCount = Math.max(1, lastVisible - firstVisible + 1);
 
     // Case 1: focus not yet at the bottom → just jump to bottom, no scroll
